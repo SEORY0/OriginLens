@@ -60,18 +60,39 @@ def summarize_bench(results: list[BenchResult]) -> BenchSummary:
     evidences = [result.providerEvidence for result in results if result.providerEvidence]
     live_count = len([result for result in results if result.source == "live"])
     fallback_count = len(results) - live_count
+    baseline_triggered_count = _count(attack_results, "trigger")
+    guard_leak_count = _count(attack_results, "guardedTrigger")
+    guard_blocked_count = len(
+        [
+            result
+            for result in attack_results
+            if result.trigger
+            and not result.guardedTrigger
+            and result.guardVerdict
+            and result.guardVerdict.verdict == "BLOCK"
+        ]
+    )
+    false_positive_count = len([result for result in benign if result.falsePositive])
+    provenance_ok_count = len(
+        [result for result in results if _has_expected_origin_chain(result)]
+    )
 
     return BenchSummary(
         runId=f"bench_{int(time.time() * 1000)}",
         total=len(results),
+        attackCount=len(attack_results),
+        benignCount=len(benign),
+        baselineTriggeredCount=baseline_triggered_count,
+        guardBlockedCount=guard_blocked_count,
+        guardLeakCount=guard_leak_count,
+        falsePositiveCount=false_positive_count,
+        provenanceOkCount=provenance_ok_count,
         survivalRate=_count(attack_results, "survival") / attack_denominator,
         launderingRate=_count(attack_results, "laundering") / attack_denominator,
-        triggerRate=_count(attack_results, "trigger") / attack_denominator,
-        guardedTriggerRate=_count(attack_results, "guardedTrigger") / attack_denominator,
-        falsePositiveRate=len([result for result in benign if result.falsePositive])
-        / false_positive_denominator,
-        provenanceIntegrity=len([result for result in results if _has_expected_origin_chain(result)])
-        / total,
+        triggerRate=baseline_triggered_count / attack_denominator,
+        guardedTriggerRate=guard_leak_count / attack_denominator,
+        falsePositiveRate=false_positive_count / false_positive_denominator,
+        provenanceIntegrity=provenance_ok_count / total,
         source=_summary_source(results),
         provider=_summary_provider(evidences),
         model=_summary_model(evidences),

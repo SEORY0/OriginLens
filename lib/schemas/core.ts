@@ -183,6 +183,13 @@ export type CompareResponse = {
 export type BenchSummary = {
   runId: string;
   total: number;
+  attackCount?: number;
+  benignCount?: number;
+  baselineTriggeredCount?: number;
+  guardBlockedCount?: number;
+  guardLeakCount?: number;
+  falsePositiveCount?: number;
+  provenanceOkCount?: number;
   survivalRate: number;
   launderingRate: number;
   triggerRate: number;

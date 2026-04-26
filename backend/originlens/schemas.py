@@ -194,6 +194,13 @@ class BenchResult(BaseModel):
 class BenchSummary(BaseModel):
     runId: str
     total: int
+    attackCount: int = 0
+    benignCount: int = 0
+    baselineTriggeredCount: int = 0
+    guardBlockedCount: int = 0
+    guardLeakCount: int = 0
+    falsePositiveCount: int = 0
+    provenanceOkCount: int = 0
     survivalRate: float
     launderingRate: float
     triggerRate: float
