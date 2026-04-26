@@ -188,7 +188,9 @@ export default function DemoPage() {
 
       {trace ? (
         <>
-          <GuardVerdictCard verdict={trace.guarded.verdict} />
+          {stage !== "baseline" ? (
+            <GuardVerdictCard verdict={trace.guarded.verdict} blockIsSuccess />
+          ) : null}
 
           <section className="grid gap-4 lg:grid-cols-2">
             <Panel

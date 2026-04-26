@@ -36,8 +36,25 @@ const VERDICT_META = {
   }
 } as const;
 
-export function GuardVerdictCard({ verdict }: { verdict: GuardVerdict }) {
-  const meta = VERDICT_META[verdict.verdict];
+export function GuardVerdictCard({
+  verdict,
+  blockIsSuccess = false
+}: {
+  verdict: GuardVerdict;
+  blockIsSuccess?: boolean;
+}) {
+  const defaultMeta = VERDICT_META[verdict.verdict];
+  const meta =
+    verdict.verdict === "BLOCK" && blockIsSuccess
+      ? {
+          ...defaultMeta,
+          Icon: ShieldCheck,
+          accent: "text-trust-user",
+          surface: "verdict-allow",
+          badgeTone: "good" as const,
+          headline: "OriginLens blocked the protected action."
+        }
+      : defaultMeta;
   const Icon = meta.Icon;
   const required = verdict.requiredOrigins;
   const observed = verdict.observedOriginChain;
@@ -85,7 +102,10 @@ export function GuardVerdictCard({ verdict }: { verdict: GuardVerdict }) {
               origins={required as Origin[]}
               emptyLabel="none required"
             />
-            <Mismatch allowed={Boolean(allowed)} />
+            <Mismatch
+              allowed={Boolean(allowed)}
+              blockIsSuccess={blockIsSuccess && verdict.verdict === "BLOCK"}
+            />
             <OriginGroup
               title="Observed origin chain"
               origins={observed as Origin[]}
@@ -141,25 +161,32 @@ function OriginGroup({
   );
 }
 
-function Mismatch({ allowed }: { allowed: boolean }) {
+function Mismatch({
+  allowed,
+  blockIsSuccess = false
+}: {
+  allowed: boolean;
+  blockIsSuccess?: boolean;
+}) {
+  const good = allowed || blockIsSuccess;
   return (
     <div className="hidden flex-col items-center gap-1 sm:flex">
       <div
         className={cn(
           "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
-          allowed
+          good
             ? "border-trust-user bg-trust-user/10 text-trust-user"
             : "border-trust-untrusted bg-trust-untrusted/10 text-trust-untrusted"
         )}
       >
-        {allowed ? "match" : "mismatch"}
+        {allowed ? "match" : blockIsSuccess ? "blocked" : "mismatch"}
       </div>
       <svg
         width="60"
         height="14"
         viewBox="0 0 60 14"
         aria-hidden
-        className={allowed ? "text-trust-user" : "text-trust-untrusted"}
+        className={good ? "text-trust-user" : "text-trust-untrusted"}
       >
         <line
           x1="2"
