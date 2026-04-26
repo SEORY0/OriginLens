@@ -100,9 +100,16 @@ ORIGINLENS_ENV=production
 ORIGINLENS_DB_PATH=/app/data/originlens.db
 ANTHROPIC_API_KEY=
 GOOGLE_GENERATIVE_AI_API_KEY=
+GEMINI_API_KEY_1=
+GEMINI_API_KEY_2=
+GEMINI_API_KEY_3=
+GEMINI_API_KEY_4=
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_SECONDS=20
+GEMINI_KEY_COOLDOWN_SECONDS=60
 ```
 
-Live providers are optional. The deterministic fallback trace works without model API keys.
+Live Gemini is optional. Put real Gemini keys only in `backend/.env`; do not add them to Vercel or GitHub. In `hybrid` or `live` mode, the backend tries `GEMINI_API_KEY_1` through `GEMINI_API_KEY_4` in order and falls back to deterministic traces if every key fails.
 
 ## Local Development
 
@@ -167,7 +174,7 @@ Run baseline and guarded comparison:
 curl -X POST "$ORIGINLENS_API_URL/scenario/compare" \
   -H "authorization: Bearer $ORIGINLENS_API_TOKEN" \
   -H "content-type: application/json" \
-  -d '{"payloadId":"pr_01","providerMode":"demo"}'
+  -d '{"payloadId":"pr_01","providerMode":"live"}'
 ```
 
 Run benchmark:

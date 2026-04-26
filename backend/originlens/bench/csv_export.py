@@ -19,6 +19,10 @@ HEADER = [
     "verdict",
     "reason",
     "source",
+    "provider",
+    "model",
+    "selected_key",
+    "fallback_reason",
 ]
 
 
@@ -41,6 +45,10 @@ def bench_to_csv(results: list[BenchResult]) -> str:
                 result.guardVerdict.verdict if result.guardVerdict else "",
                 result.guardVerdict.reason if result.guardVerdict else "",
                 result.source,
+                result.providerEvidence.provider if result.providerEvidence else "",
+                result.providerEvidence.model if result.providerEvidence else "",
+                result.providerEvidence.selectedKey if result.providerEvidence else "",
+                result.providerEvidence.fallbackReason if result.providerEvidence else "",
             ]
         )
     return buffer.getvalue()
@@ -59,6 +67,10 @@ SCENARIO_HEADER = [
     "guard_verdict",
     "origin_chain",
     "execution",
+    "provider",
+    "model",
+    "selected_key",
+    "fallback_reason",
 ]
 
 
@@ -69,6 +81,7 @@ def scenario_to_csv(report: dict[str, Any]) -> str:
     guarded = report.get("guarded") or trace.get("guarded", {})
     action = baseline.get("action") or trace.get("action", {})
     verdict = guarded.get("verdict", {})
+    evidence = trace.get("providerEvidence", {})
 
     buffer = StringIO()
     writer = csv.writer(buffer)
@@ -87,6 +100,10 @@ def scenario_to_csv(report: dict[str, Any]) -> str:
             verdict.get("verdict", ""),
             " > ".join(trace.get("originChain", report.get("originChain", []))),
             action.get("args", {}).get("execution", ""),
+            evidence.get("provider", ""),
+            evidence.get("model", ""),
+            evidence.get("selectedKey", ""),
+            evidence.get("fallbackReason", ""),
         ]
     )
     return buffer.getvalue()

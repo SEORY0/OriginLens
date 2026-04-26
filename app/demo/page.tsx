@@ -6,8 +6,11 @@ import { GuardVerdictCard } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
 import { MemoryDiff } from "@/components/MemoryDiff";
 import { MetricsTable } from "@/components/MetricsTable";
+import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { PageShell, Panel, Button, Badge, CodeBlock } from "@/components/ui";
 import type { BenchResponse, CompareResponse, ScenarioTrace } from "@/lib/schemas/core";
+
+type ProviderMode = "demo" | "hybrid" | "live";
 
 export default function DemoPage() {
   const [trace, setTrace] = useState<ScenarioTrace | null>(null);
@@ -15,6 +18,7 @@ export default function DemoPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<"idle" | "baseline" | "guard" | "bench" | "physical">("idle");
+  const [providerMode, setProviderMode] = useState<ProviderMode>("hybrid");
 
   async function runCompare(payloadId = "pr_01", nextStage: typeof stage = "baseline") {
     setLoading(nextStage);
@@ -22,7 +26,7 @@ export default function DemoPage() {
     const response = await fetch("/api/scenario/compare", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ payloadId, providerMode: "hybrid" })
+      body: JSON.stringify({ payloadId, providerMode })
     });
     if (!response.ok) {
       setError(await response.text());
@@ -44,7 +48,8 @@ export default function DemoPage() {
       body: JSON.stringify({
         surfaces: ["pr_description", "readme"],
         payloadCount: 50,
-        includeBenign: true
+        includeBenign: true,
+        providerMode: "demo"
       })
     });
     if (!response.ok) {
@@ -88,10 +93,25 @@ export default function DemoPage() {
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Vercel Proxy</Badge>
-          <Badge tone="warn">Live: unavailable</Badge>
+          <Badge tone={trace?.source === "live" ? "good" : "warn"}>
+            Live: {trace?.source === "live" ? "Gemini" : "fallback-ready"}
+          </Badge>
           <Badge tone="good">Fallback Ready</Badge>
-          <Badge>Mode: Hybrid</Badge>
+          <Badge>Mode: {providerMode}</Badge>
         </div>
+      </section>
+
+      <section className="flex flex-wrap gap-2">
+        {(["demo", "hybrid", "live"] as ProviderMode[]).map((mode) => (
+          <Button
+            key={mode}
+            variant={providerMode === mode ? "primary" : "secondary"}
+            onClick={() => setProviderMode(mode)}
+            disabled={Boolean(loading)}
+          >
+            {mode}
+          </Button>
+        ))}
       </section>
 
       <section className="grid gap-3 md:grid-cols-4">
@@ -136,6 +156,7 @@ export default function DemoPage() {
               command, transmission, or actuator is used.
             </p>
           </Panel>
+          <ProviderEvidencePanel evidence={trace.providerEvidence} />
           <Panel title="Lifecycle Timeline" eyebrow="Trace">
             <LifecycleTimeline steps={trace.trace} />
           </Panel>

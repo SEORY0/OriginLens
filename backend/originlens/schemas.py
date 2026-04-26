@@ -36,6 +36,7 @@ ProtectedAction = Literal[
 ]
 Verdict = Literal["ALLOW", "BLOCK", "ASK_CONFIRMATION"]
 Source = Literal["live", "fallback"]
+ProviderMode = Literal["demo", "live", "hybrid"]
 
 TRUST_INVARIANT = "Content may be summarized, but provenance cannot be promoted."
 TRUST_ORDER: dict[TrustLevel, int] = {
@@ -109,6 +110,22 @@ class GateResult(BaseModel):
     reason: str
 
 
+class ProviderAttempt(BaseModel):
+    key: str
+    status: Literal["ok", "failed", "skipped"]
+    reason: str | None = None
+
+
+class ProviderEvidence(BaseModel):
+    provider: Literal["gemini", "deterministic_fallback"]
+    mode: ProviderMode
+    model: str
+    source: Source
+    selectedKey: str | None = None
+    attempts: list[ProviderAttempt] = Field(default_factory=list)
+    fallbackReason: str | None = None
+
+
 class TraceStep(BaseModel):
     id: str
     label: str
@@ -134,6 +151,7 @@ class ScenarioTrace(BaseModel):
     runId: str
     payload: PayloadSeed
     source: Source
+    providerEvidence: ProviderEvidence
     contextPieces: list[ContextPiece]
     memoryClaims: list[MemoryClaim]
     action: ActionProposal
@@ -168,6 +186,7 @@ class BenchResult(BaseModel):
     guardedTrigger: bool
     falsePositive: bool | None = None
     source: Source
+    providerEvidence: ProviderEvidence | None = None
     guardVerdict: GuardVerdict | None = None
     reportUrl: str | None = None
 
@@ -192,7 +211,7 @@ class BenchResponse(BaseModel):
 class ScenarioRequest(BaseModel):
     scenario: str | None = None
     payloadId: str = "pr_01"
-    providerMode: Literal["demo", "live", "hybrid"] = "hybrid"
+    providerMode: ProviderMode = "hybrid"
 
 
 class SingleScenarioRequest(ScenarioRequest):
@@ -203,7 +222,7 @@ class BenchRequest(BaseModel):
     surfaces: list[str] | None = None
     payloadCount: int = 50
     includeBenign: bool = True
-    providerMode: Literal["demo", "live", "hybrid"] = "hybrid"
+    providerMode: ProviderMode = "hybrid"
 
 
 class VerifyActionRequest(BaseModel):
@@ -214,6 +233,7 @@ class VerifyActionRequest(BaseModel):
 class MultimodalRequest(BaseModel):
     imageId: str | None = None
     scenario: str | None = None
+    providerMode: ProviderMode = "hybrid"
 
 
 def assert_trust_does_not_promote(before: TrustLevel, after: TrustLevel) -> bool:

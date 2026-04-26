@@ -1,15 +1,17 @@
+import { LiveBenchRunner } from "@/components/LiveBenchRunner";
 import { MetricsTable } from "@/components/MetricsTable";
 import { PayloadExplorer } from "@/components/PayloadExplorer";
 import { ReportExportButton } from "@/components/ReportExportButton";
 import { PageShell, Panel, Badge } from "@/components/ui";
-import { getPayloadsFromPython, runBenchFromPython } from "@/lib/python-client";
+import { getPayloadsFromPython, getPythonHealth, runBenchFromPython } from "@/lib/python-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function BenchPage() {
-  const [bench, payloads] = await Promise.all([
+  const [bench, payloads, health] = await Promise.all([
     runBenchFromPython(),
-    getPayloadsFromPython()
+    getPayloadsFromPython(),
+    getPythonHealth()
   ]);
 
   return (
@@ -28,7 +30,11 @@ export default async function BenchPage() {
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Connected</Badge>
-          <Badge tone="warn">Live: unavailable</Badge>
+          <Badge tone={health.live === "ready" ? "good" : "warn"}>
+            Live: {health.live}
+          </Badge>
+          <Badge>model: {health.model ?? "gemini-2.5-flash"}</Badge>
+          <Badge>keys: {health.keysConfigured ?? 0}</Badge>
           <Badge>source: fallback</Badge>
           <ReportExportButton runId={bench.summary.runId} />
           <ReportExportButton runId={bench.summary.runId} format="json" />
@@ -38,6 +44,8 @@ export default async function BenchPage() {
       <Panel title="Metrics Summary" eyebrow={`${bench.summary.total} payloads`}>
         <MetricsTable summary={bench.summary} results={bench.results} />
       </Panel>
+
+      <LiveBenchRunner />
 
       <Panel title="Payload Explorer" eyebrow={`${payloads.length} seeded payloads`}>
         <PayloadExplorer payloads={payloads} />

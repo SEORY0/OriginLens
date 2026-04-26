@@ -69,12 +69,16 @@ def require_token(authorization: str | None = Header(default=None)) -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, str | int]:
+    status = provider_status()
     return {
         "status": "ok",
         "engine": "python",
         "fallback": "ready",
-        "live": provider_status()["live"],
+        "live": status["live"],
+        "gemini": status["gemini"],
+        "model": status["model"],
+        "keysConfigured": status["keysConfigured"],
     }
 
 
@@ -127,9 +131,10 @@ def payloads():
 @app.post("/multimodal/extract", dependencies=[Depends(require_token)])
 def multimodal_extract(request: MultimodalRequest):
     payload_id = "physical_01" if request.scenario == "physical_restricted_zone" else "invoice_01"
-    trace = run_scenario(get_payload(payload_id), "demo")
+    trace = run_scenario(get_payload(payload_id), request.providerMode)
     response = {
-        "provider": "deterministic_fallback",
+        "provider": trace.providerEvidence.provider,
+        "providerEvidence": trace.providerEvidence.model_dump(mode="json"),
         "trace": trace.model_dump(mode="json"),
         "extraction": {
             "origin": trace.payload.origin,

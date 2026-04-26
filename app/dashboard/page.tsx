@@ -2,6 +2,7 @@ import { GuardVerdictCard } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
 import { MemoryDiff } from "@/components/MemoryDiff";
 import { PolicyMatrix } from "@/components/PolicyMatrix";
+import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { ProvenanceGraph } from "@/components/ProvenanceGraph";
 import { PageShell, Panel, CodeBlock, Badge } from "@/components/ui";
 import { getLatestRun, getPolicyMatrixFromPython } from "@/lib/python-client";
@@ -50,6 +51,9 @@ export default async function DashboardPage() {
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Connected</Badge>
+          <Badge tone={trace.source === "live" ? "good" : "warn"}>
+            source: {trace.source}
+          </Badge>
           <Badge tone="good">mock-only execution</Badge>
         </div>
       </section>
@@ -67,6 +71,7 @@ export default async function DashboardPage() {
         <Panel title="Guard Verdict" eyebrow="protected action check">
           <GuardVerdictCard verdict={trace.guarded.verdict} />
         </Panel>
+        <ProviderEvidencePanel evidence={trace.providerEvidence} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">

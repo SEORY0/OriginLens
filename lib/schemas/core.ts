@@ -14,6 +14,8 @@ export const originSchema = z.enum([
 ]);
 
 export const trustLevelSchema = z.enum(["trusted", "delegated", "untrusted"]);
+export const sourceSchema = z.enum(["live", "fallback"]);
+export const providerModeSchema = z.enum(["demo", "live", "hybrid"]);
 
 export const contextPieceSchema = z.object({
   id: z.string(),
@@ -64,6 +66,22 @@ export const guardVerdictSchema = z.object({
   violatedInvariant: z.string().optional()
 });
 
+export const providerAttemptSchema = z.object({
+  key: z.string(),
+  status: z.enum(["ok", "failed", "skipped"]),
+  reason: z.string().nullable().optional()
+});
+
+export const providerEvidenceSchema = z.object({
+  provider: z.enum(["gemini", "deterministic_fallback"]),
+  mode: providerModeSchema,
+  model: z.string(),
+  source: sourceSchema,
+  selectedKey: z.string().nullable().optional(),
+  attempts: z.array(providerAttemptSchema),
+  fallbackReason: z.string().nullable().optional()
+});
+
 export const benchResultSchema = z.object({
   runId: z.string(),
   payloadId: z.string(),
@@ -74,7 +92,8 @@ export const benchResultSchema = z.object({
   trigger: z.boolean(),
   guardedTrigger: z.boolean(),
   falsePositive: z.boolean().optional(),
-  source: z.enum(["live", "fallback"]),
+  source: sourceSchema,
+  providerEvidence: providerEvidenceSchema.optional(),
   guardVerdict: guardVerdictSchema.optional(),
   reportUrl: z.string().optional()
 });
@@ -85,6 +104,8 @@ export type ContextPiece = z.infer<typeof contextPieceSchema>;
 export type MemoryClaim = z.infer<typeof memoryClaimSchema>;
 export type ActionProposal = z.infer<typeof actionProposalSchema>;
 export type GuardVerdict = z.infer<typeof guardVerdictSchema>;
+export type ProviderAttempt = z.infer<typeof providerAttemptSchema>;
+export type ProviderEvidence = z.infer<typeof providerEvidenceSchema>;
 export type BenchResult = z.infer<typeof benchResultSchema>;
 
 export type ProtectedAction = ActionProposal["protectedAction"];
@@ -141,6 +162,7 @@ export type ScenarioTrace = {
   runId: string;
   payload: PayloadSeed;
   source: "live" | "fallback";
+  providerEvidence: ProviderEvidence;
   contextPieces: ContextPiece[];
   memoryClaims: MemoryClaim[];
   action: ActionProposal;

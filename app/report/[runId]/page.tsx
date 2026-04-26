@@ -2,6 +2,7 @@ import { GuardVerdictCard } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
 import { MemoryDiff } from "@/components/MemoryDiff";
 import { MetricsTable } from "@/components/MetricsTable";
+import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { ReportExportButton } from "@/components/ReportExportButton";
 import { PageShell, Panel, Badge, CodeBlock } from "@/components/ui";
 import { getRun } from "@/lib/python-client";
@@ -56,6 +57,10 @@ export default async function ReportPage({
                 <span className="text-ink/60">Source</span>
                 <strong>{trace.source}</strong>
               </div>
+              <div className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="text-ink/60">Provider</span>
+                <strong>{trace.providerEvidence.provider}</strong>
+              </div>
               <div className="flex justify-between gap-3">
                 <span className="text-ink/60">Guard Verdict</span>
                 <strong>{trace.guarded.verdict.verdict}</strong>
@@ -74,6 +79,7 @@ export default async function ReportPage({
           <Panel title="Guard Verdict">
             <GuardVerdictCard verdict={trace.guarded.verdict} />
           </Panel>
+          <ProviderEvidencePanel evidence={trace.providerEvidence} />
           <Panel title="Origin Chain">
             <div className="flex flex-wrap gap-2">
               {trace.originChain.map((node) => (

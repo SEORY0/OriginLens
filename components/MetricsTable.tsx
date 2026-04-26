@@ -29,7 +29,7 @@ export function MetricsTable({
         ))}
       </div>
       <div className="overflow-auto rounded border border-line bg-white">
-        <table className="w-full min-w-[860px] text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-field text-xs uppercase tracking-wide text-ink/60">
             <tr>
               <th className="px-3 py-3">Payload</th>
@@ -39,6 +39,7 @@ export function MetricsTable({
               <th className="px-3 py-3">Guarded</th>
               <th className="px-3 py-3">Verdict</th>
               <th className="px-3 py-3">Source</th>
+              <th className="px-3 py-3">Provider</th>
             </tr>
           </thead>
           <tbody>
@@ -59,6 +60,11 @@ export function MetricsTable({
                 </td>
                 <td className="px-3 py-3">{result.guardVerdict?.verdict}</td>
                 <td className="px-3 py-3">{result.source}</td>
+                <td className="px-3 py-3">
+                  {result.providerEvidence?.selectedKey ??
+                    result.providerEvidence?.provider ??
+                    "fallback"}
+                </td>
               </tr>
             ))}
           </tbody>

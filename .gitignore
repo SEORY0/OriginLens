@@ -9,8 +9,11 @@ dist/
 coverage/
 *.tsbuildinfo
 .env
-.env*.local
+.env.*
 backend/.env
+backend/.env.*
+!.env.example
+!backend/.env.example
 backend/data/
 data/
 npm-debug.log*

@@ -46,7 +46,7 @@ def summarize_bench(results: list[BenchResult]) -> BenchSummary:
             ]
         )
         / total,
-        source="fallback",
+        source="live" if results and all(result.source == "live" for result in results) else "fallback",
     )
 
 

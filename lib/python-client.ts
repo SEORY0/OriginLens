@@ -59,9 +59,15 @@ export async function proxyToPython(path: string, request?: Request) {
 }
 
 export async function getPythonHealth() {
-  return pythonJson<{ status: string; engine: string; fallback: string; live: string }>("/health", {
-    method: "GET"
-  });
+  return pythonJson<{
+    status: string;
+    engine: string;
+    fallback: string;
+    live: string;
+    gemini?: string;
+    model?: string;
+    keysConfigured?: number;
+  }>("/health", { method: "GET" });
 }
 
 export async function getLatestRun(kind = "scenario") {
@@ -76,14 +82,14 @@ export async function getRun(runId: string) {
   });
 }
 
-export async function runBenchFromPython() {
+export async function runBenchFromPython(providerMode: "demo" | "live" | "hybrid" = "demo") {
   return pythonJson<BenchResponse>("/bench/run", {
     method: "POST",
     body: JSON.stringify({
       surfaces: ["pr_description", "readme"],
       payloadCount: 50,
       includeBenign: true,
-      providerMode: "hybrid"
+      providerMode
     })
   });
 }
