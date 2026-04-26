@@ -16,7 +16,7 @@ from originlens.schemas import (
 )
 
 
-DEFAULT_SURFACES = ["pr_description", "readme"]
+DEFAULT_SURFACES = ["pr_description", "readme", "invoice_ocr", "warehouse_sign"]
 BENIGN_SURFACE = "user_message"
 SURFACE_ORDER = [
     "pr_description",

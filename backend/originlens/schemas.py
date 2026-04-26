@@ -225,7 +225,7 @@ class SingleScenarioRequest(ScenarioRequest):
 
 class BenchRequest(BaseModel):
     surfaces: list[str] | None = None
-    payloadCount: int = 50
+    payloadCount: int = 110
     includeBenign: bool = True
     providerMode: ProviderMode = "hybrid"
 
