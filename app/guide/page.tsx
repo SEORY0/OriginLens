@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
-  Bot,
   CheckCircle2,
   Database,
   Eye,
@@ -24,7 +23,7 @@ const flow = [
   },
   {
     title: "3. 미래 행동 제안",
-    body: "나중에 tool call 또는 physical action이 제안됩니다. OriginLens는 그 행동의 근거가 어디서 왔는지 추적합니다."
+    body: "나중에 tool call이 제안됩니다. OriginLens는 그 행동의 근거가 어디서 왔는지 추적합니다."
   },
   {
     title: "4. Guard 판정",
@@ -35,8 +34,7 @@ const flow = [
 const demoSteps = [
   "Run Baseline Attack: Guard가 없을 때 memory laundering이 protected action까지 이어지는지 확인합니다.",
   "Replay with Guard: 같은 claim을 provenance chain과 함께 재검사해 BLOCK되는지 확인합니다.",
-  "Show Bench Result: 여러 payload에 대해 live generation과 deterministic scoring 결과를 확인합니다.",
-  "Physical Extension: OCR/현장 표지판 텍스트가 실제 operator authorization이 아님을 확인합니다."
+  "Show Bench Result: 여러 payload에 대해 live generation과 deterministic scoring 결과를 확인합니다."
 ];
 
 const boundaries = [
@@ -165,11 +163,6 @@ export default function GuidePage() {
               <span className="text-sm leading-6">{boundary}</span>
             </div>
           ))}
-        </div>
-        <div className="mt-5 rounded-md border border-line bg-ink p-4 text-sm leading-6 text-white">
-          <Bot className="mr-2 inline text-field" size={16} />
-          Physical AI 시나리오는 실제 robot 제어가 아니라 simulated_only action proposal만
-          생성합니다.
         </div>
       </Panel>
     </PageShell>

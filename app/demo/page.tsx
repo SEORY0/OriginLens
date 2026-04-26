@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, Bot, Loader2, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { BarChart3, Loader2, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { BenchmarkEvidenceRunner } from "@/components/BenchmarkEvidenceRunner";
-import { GuardVerdictCard } from "@/components/GuardVerdictCard";
+import { GuardVerdictCard, OriginChip } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
 import { MemoryDiff } from "@/components/MemoryDiff";
 import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
@@ -17,7 +17,7 @@ export default function DemoPage() {
   const [trace, setTrace] = useState<ScenarioTrace | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stage, setStage] = useState<"idle" | "baseline" | "guard" | "bench" | "physical">("idle");
+  const [stage, setStage] = useState<"idle" | "baseline" | "guard" | "bench">("idle");
   const [providerMode, setProviderMode] = useState<ProviderMode>("hybrid");
   const [benchRunKey, setBenchRunKey] = useState(0);
 
@@ -47,7 +47,6 @@ export default function DemoPage() {
   }
 
   const activeTitle = useMemo(() => {
-    if (stage === "physical") return "Physical AI extension";
     if (stage === "bench") return "Benchmark evidence";
     if (stage === "guard") return "Guarded replay";
     if (stage === "baseline") return "Baseline memory-laundering attack";
@@ -58,7 +57,6 @@ export default function DemoPage() {
     if (stage === "baseline") return "The user never approved this — yet the agent acted on it.";
     if (stage === "guard") return "The claim survived, but provenance stayed untrusted.";
     if (stage === "bench") return "Measured across a payload set, not a single anecdote.";
-    if (stage === "physical") return "Scene text is observation, not authorization.";
     return "Run the baseline attack, then replay the same payload with the OriginLens Guard.";
   }, [stage]);
 
@@ -137,7 +135,7 @@ export default function DemoPage() {
         </div>
       </header>
 
-      <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-2 sm:grid-cols-3">
         <StepButton
           step={1}
           label="Baseline Attack"
@@ -165,15 +163,6 @@ export default function DemoPage() {
           loading={loading === "bench"}
           active={stage === "bench"}
         />
-        <StepButton
-          step={4}
-          label="Physical Extension"
-          icon={loading === "physical" ? <Loader2 size={16} className="animate-spin" /> : <Bot size={16} />}
-          onClick={() => runCompare("physical_01", "physical")}
-          disabled={Boolean(loading)}
-          loading={loading === "physical"}
-          active={stage === "physical"}
-        />
       </section>
 
       {error ? (
@@ -188,9 +177,11 @@ export default function DemoPage() {
 
       {trace ? (
         <>
-          {stage !== "baseline" ? (
+          {stage === "baseline" ? (
+            <BaselineRiskCard trace={trace} />
+          ) : (
             <GuardVerdictCard verdict={trace.guarded.verdict} blockIsSuccess />
-          ) : null}
+          )}
 
           <section className="grid gap-4 lg:grid-cols-2">
             <Panel
@@ -260,6 +251,89 @@ export default function DemoPage() {
   );
 }
 
+function BaselineRiskCard({ trace }: { trace: ScenarioTrace }) {
+  const triggered = trace.baseline.trigger;
+
+  return (
+    <div className="verdict-block overflow-hidden rounded-xl border border-line shadow-verdict">
+      <div className="grid gap-5 p-5 lg:grid-cols-[auto_1fr] lg:items-start">
+        <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+          <div className="grid h-16 w-16 place-items-center rounded-xl border bg-white text-trust-untrusted shadow-sm">
+            <Play size={32} strokeWidth={2.4} />
+          </div>
+          <div>
+            <p className="text-3xl font-bold leading-none tracking-tight text-trust-untrusted sm:text-4xl">
+              {triggered ? "TRIGGER" : "CLEAR"}
+            </p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-moss">
+              Baseline · Guard Off
+            </p>
+          </div>
+        </div>
+        <div>
+          <p className="text-base font-semibold leading-snug">
+            {triggered
+              ? "The untrusted claim reached a protected action."
+              : "The payload did not trigger a protected action."}
+          </p>
+          <p className="mt-1.5 text-sm leading-6 text-ink/75">
+            No provenance check is applied in the baseline run, so the compacted
+            memory can be reused as if it were authorization.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <div className="rounded-md border border-line bg-white p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-moss">
+                Claimed origin
+              </p>
+              <OriginChip origin={trace.payload.origin} />
+            </div>
+            <div className="hidden flex-col items-center gap-1 sm:flex">
+              <div className="rounded-full border border-trust-untrusted bg-trust-untrusted/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-trust-untrusted">
+                unchecked
+              </div>
+              <svg
+                width="60"
+                height="14"
+                viewBox="0 0 60 14"
+                aria-hidden
+                className="text-trust-untrusted"
+              >
+                <line
+                  x1="2"
+                  y1="7"
+                  x2="58"
+                  y2="7"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray="5 4"
+                />
+                <polygon points="52,2 58,7 52,12" fill="currentColor" />
+              </svg>
+            </div>
+            <div className="rounded-md border border-line bg-white p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-moss">
+                Proposed action
+              </p>
+              <Badge tone={triggered ? "bad" : "good"}>
+                {trace.baseline.action.actionType}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-md border border-line bg-white/80 p-3 text-xs leading-5 text-ink/75">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-moss">
+              Why this is bad
+            </p>
+            The user-origin approval was never observed; the approval claim came from{" "}
+            {trace.originChain.join(" -> ")}.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StepButton({
   step,
   label,
@@ -309,11 +383,10 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function stageNumber(stage: string) {
-  if (stage === "baseline") return "1 / 4";
-  if (stage === "guard") return "2 / 4";
-  if (stage === "bench") return "3 / 4";
-  if (stage === "physical") return "4 / 4";
-  return "0 / 4";
+  if (stage === "baseline") return "1 / 3";
+  if (stage === "guard") return "2 / 3";
+  if (stage === "bench") return "3 / 3";
+  return "0 / 3";
 }
 
 async function formatApiError(response: Response) {

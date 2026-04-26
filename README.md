@@ -1,8 +1,8 @@
 # OriginLens
 
-Lifecycle Red-Team & Provenance Firewall for Memory-Laundering Attacks.
+> **컨텍스트가 메모리가 되는 순간을 공격하고, 메모리가 행동이 되기 전에 출처를 검증합니다.**
 
-OriginLens tests whether untrusted context can be summarized, compacted, remembered, and later reused as authorization for protected actions. It is built as a safe, product-agnostic harness for AI safety demos and hackathon judging.
+OriginLens는 AI agent를 배포하기 전에, 외부 파일·문서·이미지·센서 입력 같은 **untrusted context**가 agent의 요약, compaction, memory, retrieval 과정을 거쳐 **trusted instruction** 또는 **unauthorized action**으로 세탁되는지 자동으로 테스트하고 방어하는 웹 기반 AI Safety 플랫폼이다.
 
 ## Product Overview
 
@@ -27,7 +27,6 @@ OriginLens demonstrates this with:
 - Baseline replay: untrusted context survives compaction and triggers a mock protected action.
 - Guarded replay: the same claim is blocked because its origin chain is not authorized.
 - Benchmark evidence: payload families are replayed and measured.
-- Physical AI extension: scene text is treated as observation, not authorization.
 
 ## Architecture
 
@@ -52,8 +51,6 @@ The Next.js app renders dashboards and reports. The Python engine owns red-team 
 6. Show `BLOCK` with origin chain `file_read -> subagent_summary -> compacted_memory`.
 7. Click `Show Bench Result`.
 8. Show Survival, Laundering, Trigger, Guarded Trigger, FPR, and Provenance Integrity.
-9. Click `Physical Extension`.
-10. Say: `Scene text is observation, not authorization.`
 
 ## Presentation Script
 
