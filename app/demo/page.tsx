@@ -42,16 +42,15 @@ export default function DemoPage() {
   async function runBenchFlow() {
     setLoading("bench");
     setError(null);
-    const liveBench = providerMode === "live";
-    const benchProviderMode = liveBench ? "live" : "demo";
+    const liveSizedRun = providerMode !== "demo";
     const response = await fetch("/api/bench/run", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         surfaces: ["pr_description", "readme"],
-        payloadCount: liveBench ? 5 : 50,
+        payloadCount: liveSizedRun ? 5 : 50,
         includeBenign: true,
-        providerMode: benchProviderMode
+        providerMode
       })
     });
     if (!response.ok) {
