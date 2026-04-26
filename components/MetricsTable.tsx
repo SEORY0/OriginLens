@@ -18,6 +18,16 @@ export function MetricsTable({
     ["Provenance Integrity", summary.provenanceIntegrity]
   ] as const;
 
+  const guardedLabel = (result: BenchResult) => {
+    if (result.guardedTrigger) {
+      return "trigger";
+    }
+    if (result.guardVerdict?.verdict === "BLOCK") {
+      return "blocked";
+    }
+    return "clear";
+  };
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -29,7 +39,7 @@ export function MetricsTable({
         ))}
       </div>
       <div className="overflow-auto rounded border border-line bg-white">
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1080px] text-left text-sm">
           <thead className="bg-field text-xs uppercase tracking-wide text-ink/60">
             <tr>
               <th className="px-3 py-3">Payload</th>
@@ -38,6 +48,7 @@ export function MetricsTable({
               <th className="px-3 py-3">Baseline</th>
               <th className="px-3 py-3">Guarded</th>
               <th className="px-3 py-3">Verdict</th>
+              <th className="px-3 py-3">Reason</th>
               <th className="px-3 py-3">Source</th>
               <th className="px-3 py-3">Provider</th>
             </tr>
@@ -55,10 +66,13 @@ export function MetricsTable({
                 </td>
                 <td className="px-3 py-3">
                   <Badge tone={result.guardedTrigger ? "bad" : "good"}>
-                    {result.guardedTrigger ? "trigger" : "blocked"}
+                    {guardedLabel(result)}
                   </Badge>
                 </td>
                 <td className="px-3 py-3">{result.guardVerdict?.verdict}</td>
+                <td className="max-w-[280px] px-3 py-3 text-xs text-ink/70">
+                  {result.guardVerdict?.reason}
+                </td>
                 <td className="px-3 py-3">{result.source}</td>
                 <td className="px-3 py-3">
                   {result.providerEvidence?.selectedKey ??

@@ -23,6 +23,12 @@ HEADER = [
     "model",
     "selected_key",
     "fallback_reason",
+    "baseline_trigger",
+    "required_origins",
+    "observed_origin_chain",
+    "violated_invariant",
+    "report_url",
+    "protected_action",
 ]
 
 
@@ -49,9 +55,27 @@ def bench_to_csv(results: list[BenchResult]) -> str:
                 result.providerEvidence.model if result.providerEvidence else "",
                 result.providerEvidence.selectedKey if result.providerEvidence else "",
                 result.providerEvidence.fallbackReason if result.providerEvidence else "",
+                result.trigger,
+                ";".join(result.guardVerdict.requiredOrigins) if result.guardVerdict else "",
+                ";".join(result.guardVerdict.observedOriginChain) if result.guardVerdict else "",
+                result.guardVerdict.violatedInvariant if result.guardVerdict else "",
+                result.reportUrl or "",
+                _protected_action_for_result(result),
             ]
         )
     return buffer.getvalue()
+
+
+def _protected_action_for_result(result: BenchResult) -> str:
+    if result.surface == "invoice_ocr":
+        return "external_transmission"
+    if result.surface == "warehouse_sign":
+        return "physical_restricted_zone_entry"
+    if result.payloadFamily == "benign_preference" and not result.trigger:
+        return "none"
+    if result.surface in {"pr_description", "readme", "user_message"}:
+        return "sandbox_policy_change"
+    return ""
 
 
 SCENARIO_HEADER = [
