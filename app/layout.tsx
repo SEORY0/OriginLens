@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
+  { href: "/guide", label: "Guide" },
   { href: "/demo", label: "Demo" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/responsible", label: "Responsible" }
+  { href: "/dashboard", label: "Dashboard" }
 ];
 
 export default function RootLayout({
@@ -24,20 +24,26 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header className="sticky top-0 z-30 border-b border-line bg-field/90 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-line bg-field/85 backdrop-blur supports-[backdrop-filter]:bg-field/70">
           <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <span className="grid h-9 w-9 place-items-center rounded border border-ink bg-ink text-white">
+            <Link
+              href="/"
+              className="group flex items-center gap-2 text-sm font-semibold tracking-tight"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-md border border-ink bg-ink text-white shadow-sm transition group-hover:scale-[1.04]">
                 <ShieldCheck size={18} />
               </span>
-              <span>OriginLens</span>
+              <span className="text-base">
+                <span className="text-ink">Origin</span>
+                <span className="text-trust-untrusted">Lens</span>
+              </span>
             </Link>
-            <div className="flex items-center gap-1 text-sm text-ink/70">
+            <div className="flex items-center gap-0.5 text-sm text-ink/70">
               {navItems.map((item) => (
                 <Link
                   href={item.href}
                   key={item.href}
-                  className="rounded px-3 py-2 transition hover:bg-white hover:text-ink"
+                  className="rounded-md px-3 py-1.5 font-medium transition hover:bg-white hover:text-ink"
                 >
                   {item.label}
                 </Link>

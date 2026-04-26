@@ -44,15 +44,16 @@ The Next.js app renders dashboards and reports. The Python engine owns red-team 
 
 ## Demo Flow
 
-1. Open `/demo`.
-2. Click `Run Baseline Attack`.
-3. Show that a PR-description claim becomes `run_build({ mock_unsandboxed: true })`.
-4. Click `Replay with Guard`.
-5. Show `BLOCK` with origin chain `file_read -> subagent_summary -> compacted_memory`.
-6. Click `Show Bench Result`.
-7. Show Survival, Laundering, Trigger, Guarded Trigger, FPR, and Provenance Integrity.
-8. Click `Physical Extension`.
-9. Say: `Scene text is observation, not authorization.`
+1. Open `/guide` for the Korean project guide and safety boundary.
+2. Open `/demo`.
+3. Click `Run Baseline Attack`.
+4. Show that a PR-description claim becomes `run_build({ mock_unsandboxed: true })`.
+5. Click `Replay with Guard`.
+6. Show `BLOCK` with origin chain `file_read -> subagent_summary -> compacted_memory`.
+7. Click `Show Bench Result`.
+8. Show Survival, Laundering, Trigger, Guarded Trigger, FPR, and Provenance Integrity.
+9. Click `Physical Extension`.
+10. Say: `Scene text is observation, not authorization.`
 
 ## Presentation Script
 
@@ -73,7 +74,7 @@ Input guardrails protect what agents see now.
 OriginLens protects what agents remember later, before memory becomes action.
 ```
 
-## Responsible Research
+## Safety Boundary
 
 - No real secrets are used.
 - No real network exfiltration is performed.

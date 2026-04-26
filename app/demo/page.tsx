@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, Bot, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { BarChart3, Bot, Loader2, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { BenchmarkEvidenceRunner } from "@/components/BenchmarkEvidenceRunner";
 import { GuardVerdictCard } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
@@ -9,6 +9,7 @@ import { MemoryDiff } from "@/components/MemoryDiff";
 import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { PageShell, Panel, Button, Badge, CodeBlock } from "@/components/ui";
 import type { CompareResponse, ScenarioTrace } from "@/lib/schemas/core";
+import { cn } from "@/lib/utils";
 
 type ProviderMode = "demo" | "hybrid" | "live";
 
@@ -50,15 +51,15 @@ export default function DemoPage() {
     if (stage === "bench") return "Benchmark evidence";
     if (stage === "guard") return "Guarded replay";
     if (stage === "baseline") return "Baseline memory-laundering attack";
-    return "Ready";
+    return "Ready to run";
   }, [stage]);
 
   const speakerNote = useMemo(() => {
-    if (stage === "baseline") return "The user never approved this.";
+    if (stage === "baseline") return "The user never approved this — yet the agent acted on it.";
     if (stage === "guard") return "The claim survived, but provenance stayed untrusted.";
-    if (stage === "bench") return "This is measured across a payload set, not a single anecdote.";
+    if (stage === "bench") return "Measured across a payload set, not a single anecdote.";
     if (stage === "physical") return "Scene text is observation, not authorization.";
-    return "Run the baseline attack, then replay the same memory with OriginLens Guard.";
+    return "Run the baseline attack, then replay the same payload with the OriginLens Guard.";
   }, [stage]);
 
   const runStatus = useMemo(() => {
@@ -96,138 +97,153 @@ export default function DemoPage() {
     setStage("idle");
   }
 
-  const liveBadge = trace
-    ? trace.source === "live"
-      ? `${trace.providerEvidence.provider} verified`
-      : "fallback trace"
-    : providerMode === "live"
-      ? "live provider required"
-      : "fallback-ready";
-
   return (
     <PageShell className="grid gap-6">
-      <section className="flex flex-wrap items-end justify-between gap-4">
+      {loading ? (
+        <div
+          aria-hidden
+          className="fixed inset-x-0 top-0 z-40 h-[3px] progress-shimmer"
+        />
+      ) : null}
+
+      <header className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-moss">
-            Presentation Mode
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss">
+            Presentation Mode · Step {stageNumber(stage)}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">{activeTitle}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
-            {speakerNote}
-          </p>
+          <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-4xl">{activeTitle}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">{speakerNote}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="good">Engine: Python</Badge>
-          <Badge>API: Vercel Proxy</Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
           <Badge tone={trace?.source === "live" ? "good" : "warn"}>
-            Live: {liveBadge}
+            {trace?.source === "live" ? "live verified" : "fallback ready"}
           </Badge>
-          <Badge tone="good">Fallback Ready</Badge>
-          <Badge>Mode: {providerMode}</Badge>
+          <span className="hidden h-4 w-px bg-line lg:inline-block" />
+          {(["demo", "hybrid", "live"] as ProviderMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => selectProviderMode(mode)}
+              disabled={Boolean(loading)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50",
+                providerMode === mode
+                  ? "border-ink bg-ink text-white"
+                  : "border-line bg-white text-ink/70 hover:border-ink"
+              )}
+            >
+              {mode}
+            </button>
+          ))}
         </div>
-      </section>
+      </header>
 
-      <section className="flex flex-wrap gap-2">
-        {(["demo", "hybrid", "live"] as ProviderMode[]).map((mode) => (
-          <Button
-            key={mode}
-            variant={providerMode === mode ? "primary" : "secondary"}
-            onClick={() => selectProviderMode(mode)}
-            disabled={Boolean(loading)}
-          >
-            {mode}
-          </Button>
-        ))}
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-4">
-        <Button onClick={() => runCompare("pr_01", "baseline")} disabled={Boolean(loading)}>
-          <Play size={16} />
-          Run Baseline Attack
-        </Button>
-        <Button
-          variant="secondary"
+      <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <StepButton
+          step={1}
+          label="Baseline Attack"
+          icon={loading === "baseline" ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+          onClick={() => runCompare("pr_01", "baseline")}
+          disabled={Boolean(loading)}
+          loading={loading === "baseline"}
+          variant="primary"
+          active={stage === "baseline"}
+        />
+        <StepButton
+          step={2}
+          label="Replay with Guard"
+          icon={loading === "guard" ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
           onClick={() => runCompare("pr_01", "guard")}
           disabled={Boolean(loading)}
-        >
-          <ShieldCheck size={16} />
-          Replay with Guard
-        </Button>
-        <Button variant="secondary" onClick={runBenchFlow} disabled={Boolean(loading)}>
-          <BarChart3 size={16} />
-          Show Bench Result
-        </Button>
-        <Button
-          variant="secondary"
+          loading={loading === "guard"}
+          active={stage === "guard"}
+        />
+        <StepButton
+          step={3}
+          label="Show Benchmark"
+          icon={loading === "bench" ? <Loader2 size={16} className="animate-spin" /> : <BarChart3 size={16} />}
+          onClick={runBenchFlow}
+          disabled={Boolean(loading)}
+          loading={loading === "bench"}
+          active={stage === "bench"}
+        />
+        <StepButton
+          step={4}
+          label="Physical Extension"
+          icon={loading === "physical" ? <Loader2 size={16} className="animate-spin" /> : <Bot size={16} />}
           onClick={() => runCompare("physical_01", "physical")}
           disabled={Boolean(loading)}
-        >
-          <Bot size={16} />
-          Physical Extension
-        </Button>
+          loading={loading === "physical"}
+          active={stage === "physical"}
+        />
       </section>
 
       {error ? (
         <Panel
           title={providerMode === "live" ? "Live provider run failed" : "Python API unavailable"}
           eyebrow={providerMode === "live" ? "provider error" : "proxy error"}
+          variant="danger"
         >
           <p className="text-sm leading-6 text-signal">{error}</p>
         </Panel>
       ) : null}
 
       {trace ? (
-        <section className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Presentation Cue" eyebrow="say this">
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Badge tone={runStatus?.tone ?? "neutral"}>
-                {trace.source === "live" ? `${trace.providerEvidence.provider} live verified` : "fallback trace"}
-              </Badge>
-              <Badge tone={trace.guarded.verdict.verdict === "BLOCK" ? "good" : "warn"}>
-                Guard: {trace.guarded.verdict.verdict}
-              </Badge>
-            </div>
-            <p className="text-lg font-semibold leading-7">
-              {runStatus?.title ?? speakerNote}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-ink/70">{runStatus?.detail}</p>
-            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-              <div className="rounded border border-line bg-white p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Model</p>
-                <p className="mt-1 font-semibold">{trace.providerEvidence.model}</p>
+        <>
+          <GuardVerdictCard verdict={trace.guarded.verdict} />
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <Panel
+              title="Presentation cue"
+              eyebrow="say this"
+              variant="subtle"
+              action={
+                <Badge tone={runStatus?.tone ?? "neutral"}>
+                  {trace.source === "live"
+                    ? `${trace.providerEvidence.provider} live`
+                    : "fallback"}
+                </Badge>
+              }
+            >
+              <p className="text-base font-semibold leading-6">
+                {runStatus?.title ?? speakerNote}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-ink/70">{runStatus?.detail}</p>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <KV label="model" value={trace.providerEvidence.model} />
+                <KV label="key" value={trace.providerEvidence.selectedKey ?? "none"} />
+                <KV
+                  label="result"
+                  value={`${trace.baseline.trigger ? "trigger" : "clear"} → ${trace.guarded.trigger ? "trigger" : "blocked"}`}
+                />
               </div>
-              <div className="rounded border border-line bg-white p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Key</p>
-                <p className="mt-1 font-semibold">{trace.providerEvidence.selectedKey ?? "none"}</p>
-              </div>
-              <div className="rounded border border-line bg-white p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Result</p>
-                <p className="mt-1 font-semibold">
-                  {trace.baseline.trigger ? "Baseline triggered" : "Baseline clear"} /{" "}
-                  {trace.guarded.trigger ? "Guard triggered" : "Guard blocked"}
-                </p>
-              </div>
-            </div>
-          </Panel>
-          <ProviderEvidencePanel evidence={trace.providerEvidence} />
-          <Panel title="Lifecycle Timeline" eyebrow="Trace">
-            <LifecycleTimeline steps={trace.trace} />
-          </Panel>
-          <Panel title="Memory Diff" eyebrow="Context to memory">
-            <MemoryDiff trace={trace} />
-          </Panel>
-          <Panel title="Baseline Action" eyebrow="Guard off">
-            <CodeBlock>{JSON.stringify(trace.baseline.action, null, 2)}</CodeBlock>
-          </Panel>
-          <Panel title="Guard Verdict" eyebrow="OriginLens on">
-            <GuardVerdictCard verdict={trace.guarded.verdict} />
-          </Panel>
-        </section>
+            </Panel>
+            <Panel title="Lifecycle timeline" eyebrow="context → action">
+              <LifecycleTimeline steps={trace.trace} />
+            </Panel>
+            <Panel title="Memory diff" eyebrow="provenance collapse">
+              <MemoryDiff trace={trace} />
+            </Panel>
+            <Panel
+              title="Baseline action proposal"
+              eyebrow="guard off · mock only"
+              variant={trace.baseline.trigger ? "danger" : "default"}
+              action={
+                <Badge tone={trace.baseline.trigger ? "bad" : "good"}>
+                  {trace.baseline.trigger ? "would execute" : "no protected action"}
+                </Badge>
+              }
+            >
+              <CodeBlock size="sm">{JSON.stringify(trace.baseline.action, null, 2)}</CodeBlock>
+            </Panel>
+            <ProviderEvidencePanel evidence={trace.providerEvidence} />
+          </section>
+        </>
       ) : (
-        <Panel title="Demo ready">
+        <Panel title="Demo ready" eyebrow="press 1" variant="subtle">
           <div className="flex items-center gap-3 text-sm text-ink/70">
             <RotateCcw size={16} />
-            Start with baseline attack, then replay the same payload with the guard.
+            Start with the baseline attack, then replay the same payload with the
+            guard to see provenance enforcement.
           </div>
         </Panel>
       )}
@@ -241,6 +257,66 @@ export default function DemoPage() {
       ) : null}
     </PageShell>
   );
+}
+
+function StepButton({
+  step,
+  label,
+  icon,
+  onClick,
+  disabled,
+  loading,
+  variant = "secondary",
+  active = false
+}: {
+  step: number;
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  variant?: "primary" | "secondary";
+  active?: boolean;
+}) {
+  return (
+    <Button
+      onClick={onClick}
+      disabled={disabled}
+      loading={loading}
+      variant={variant}
+      className={cn(
+        "justify-start text-left",
+        active && variant !== "primary" && "border-ink"
+      )}
+    >
+      <span className="grid h-5 w-5 place-items-center rounded-full border border-current text-[10px] font-bold">
+        {step}
+      </span>
+      {icon}
+      <span className="flex-1">{label}</span>
+    </Button>
+  );
+}
+
+function KV({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded border border-line bg-white px-2 py-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-moss">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate font-semibold" title={String(value)}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function stageNumber(stage: string) {
+  if (stage === "baseline") return "1 / 4";
+  if (stage === "guard") return "2 / 4";
+  if (stage === "bench") return "3 / 4";
+  if (stage === "physical") return "4 / 4";
+  return "0 / 4";
 }
 
 async function formatApiError(response: Response) {

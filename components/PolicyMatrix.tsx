@@ -1,45 +1,55 @@
-import { Badge } from "@/components/ui";
 import type { PolicyMatrixResponse } from "@/lib/python-client";
+import { OriginChip } from "@/components/GuardVerdictCard";
+import type { Origin } from "@/lib/schemas/core";
 
 export function PolicyMatrix({ policies }: { policies: PolicyMatrixResponse }) {
+  const entries = Object.entries(policies).filter(([key]) => key !== "none");
   return (
-    <div className="overflow-auto rounded border border-line bg-white">
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="bg-field text-xs uppercase tracking-wide text-ink/60">
-          <tr>
-            <th className="px-3 py-3">Protected Action</th>
-            <th className="px-3 py-3">Required</th>
-            <th className="px-3 py-3">Denied</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(policies)
-            .filter(([key]) => key !== "none")
-            .map(([key, policy]) => (
-              <tr className="border-t border-line" key={key}>
-                <td className="px-3 py-3 font-semibold">{policy.label}</td>
-                <td className="px-3 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {policy.requiredOrigins.map((origin) => (
-                      <Badge tone="good" key={origin}>
-                        {origin}
-                      </Badge>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-3 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {policy.deniedOrigins.map((origin) => (
-                      <Badge tone="bad" key={origin}>
-                        {origin}
-                      </Badge>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+    <div className="grid gap-3 md:grid-cols-2">
+      {entries.map(([key, policy]) => (
+        <article
+          key={key}
+          className="rounded-lg border border-line bg-white p-4 shadow-sm"
+        >
+          <header className="mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-moss">
+              Protected action
+            </p>
+            <h3 className="mt-0.5 text-sm font-bold">{policy.label}</h3>
+            <p className="text-[11px] uppercase tracking-wide text-ink/45">{key}</p>
+          </header>
+          <div className="grid gap-3">
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-trust-user">
+                ✓ required
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {policy.requiredOrigins.length ? (
+                  policy.requiredOrigins.map((o) => (
+                    <OriginChip key={o} origin={o as Origin} size="sm" />
+                  ))
+                ) : (
+                  <span className="text-xs text-ink/50">—</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-trust-untrusted">
+                ✕ denied
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {policy.deniedOrigins.length ? (
+                  policy.deniedOrigins.map((o) => (
+                    <OriginChip key={o} origin={o as Origin} size="sm" />
+                  ))
+                ) : (
+                  <span className="text-xs text-ink/50">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }

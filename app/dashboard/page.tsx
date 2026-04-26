@@ -5,6 +5,7 @@ import { PolicyMatrix } from "@/components/PolicyMatrix";
 import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { ProvenanceGraph } from "@/components/ProvenanceGraph";
 import { PageShell, Panel, CodeBlock, Badge } from "@/components/ui";
+import { OriginChip } from "@/components/GuardVerdictCard";
 import { getLatestRun, getPolicyMatrixFromPython } from "@/lib/python-client";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +21,17 @@ export default async function DashboardPage() {
   } catch (error) {
     return (
       <PageShell className="grid gap-6">
-        <section>
-          <p className="text-sm font-semibold uppercase tracking-wide text-moss">
+        <header>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss">
             Full Trace Analysis
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">Dashboard</h1>
-        </section>
-        <Panel title="Python API unavailable" eyebrow="connection">
+          <h1 className="mt-2 text-3xl font-bold">Dashboard</h1>
+        </header>
+        <Panel title="Python API unavailable" eyebrow="connection" variant="danger">
           <p className="text-sm leading-6 text-signal">
-            {error instanceof Error ? error.message : "Unable to reach the OriginLens Python API."}
+            {error instanceof Error
+              ? error.message
+              : "Unable to reach the OriginLens Python API."}
           </p>
           <p className="mt-3 text-sm leading-6 text-ink/70">
             Start the FastAPI engine, then refresh this page.
@@ -41,49 +44,53 @@ export default async function DashboardPage() {
 
   return (
     <PageShell className="grid gap-6">
-      <section className="flex flex-wrap items-end justify-between gap-4">
+      <header className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-moss">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-moss">
             Full Trace Analysis
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">Dashboard</h1>
+          <h1 className="mt-2 text-3xl font-bold">Dashboard</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/70">
+            Inspect the most recent scenario run end-to-end — context, lifecycle,
+            memory diff, guard verdict, provenance, and policy matrix.
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="good">Engine: Python</Badge>
-          <Badge>API: Connected</Badge>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone="good">engine: python</Badge>
           <Badge tone={trace.source === "live" ? "good" : "warn"}>
             source: {trace.source}
           </Badge>
-          <Badge tone="good">mock-only execution</Badge>
+          <Badge tone="info">mock-only execution</Badge>
         </div>
-      </section>
+      </header>
+
+      <GuardVerdictCard verdict={trace.guarded.verdict} />
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Untrusted Context" eyebrow={trace.payload.surface}>
-          <p className="text-sm leading-6 text-ink/75">{trace.payload.content}</p>
+        <Panel
+          title="Untrusted context"
+          eyebrow={trace.payload.surface}
+          variant="danger"
+          action={<OriginChip origin={trace.payload.origin} size="sm" />}
+        >
+          <p className="text-sm leading-6 text-ink/80">{trace.payload.content}</p>
         </Panel>
-        <Panel title="Lifecycle Timeline" eyebrow="context to action">
+        <Panel title="Lifecycle timeline" eyebrow="context to action">
           <LifecycleTimeline steps={trace.trace} />
         </Panel>
-        <Panel title="Memory Diff" eyebrow="provenance collapse">
+        <Panel title="Memory diff" eyebrow="provenance collapse">
           <MemoryDiff trace={trace} />
         </Panel>
-        <Panel title="Guard Verdict" eyebrow="protected action check">
-          <GuardVerdictCard verdict={trace.guarded.verdict} />
-        </Panel>
-        <ProviderEvidencePanel evidence={trace.providerEvidence} />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <Panel title="Provenance Graph" eyebrow="parent chain">
-          <ProvenanceGraph trace={trace} />
-        </Panel>
-        <Panel title="Mock Action Proposal" eyebrow="no real command">
+        <Panel title="Mock action proposal" eyebrow="no real command executed">
           <CodeBlock>{JSON.stringify(trace.action, null, 2)}</CodeBlock>
         </Panel>
+        <ProviderEvidencePanel evidence={trace.providerEvidence} />
+        <Panel title="Provenance graph" eyebrow="parent chain">
+          <ProvenanceGraph trace={trace} />
+        </Panel>
       </section>
 
-      <Panel title="Policy Matrix" eyebrow="required origin by protected action">
+      <Panel title="Policy matrix" eyebrow="required origin by protected action">
         <PolicyMatrix policies={policies} />
       </Panel>
     </PageShell>

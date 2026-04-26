@@ -49,3 +49,71 @@ select {
   font-family:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
+
+:focus-visible {
+  outline: 2px solid #101820;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.verdict-block {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(204, 63, 47, 0.16), transparent 55%),
+    linear-gradient(135deg, #ffffff 0%, #fbeae7 100%);
+}
+
+.verdict-allow {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(101, 115, 79, 0.18), transparent 55%),
+    linear-gradient(135deg, #ffffff 0%, #eef2e7 100%);
+}
+
+.verdict-warn {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 154, 42, 0.18), transparent 55%),
+    linear-gradient(135deg, #ffffff 0%, #fbf3df 100%);
+}
+
+.scanline {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(16, 24, 32, 0.06) 0 1px,
+    transparent 1px 12px
+  );
+}
+
+.laundered-mark {
+  background: linear-gradient(180deg, transparent 60%, rgba(212, 154, 42, 0.45) 60%);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.flow-arrow {
+  stroke: #cc3f2f;
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 6 4;
+  animation: dash-flow 1.4s linear infinite;
+}
+
+.progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 24, 32, 0.05) 0%,
+    rgba(16, 24, 32, 0.18) 50%,
+    rgba(16, 24, 32, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+table.sticky-header thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
