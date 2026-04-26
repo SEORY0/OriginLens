@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BarChart3, Loader2, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { BarChart3, Loader2, Play, RotateCcw, ShieldCheck, ShieldX } from "lucide-react";
 import { BenchmarkEvidenceRunner } from "@/components/BenchmarkEvidenceRunner";
 import { GuardVerdictCard, OriginChip } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
@@ -253,32 +253,44 @@ export default function DemoPage() {
 
 function BaselineRiskCard({ trace }: { trace: ScenarioTrace }) {
   const triggered = trace.baseline.trigger;
+  const Icon = triggered ? ShieldX : ShieldCheck;
 
   return (
     <div className="verdict-block overflow-hidden rounded-xl border border-line shadow-verdict">
       <div className="grid gap-5 p-5 lg:grid-cols-[auto_1fr] lg:items-start">
         <div className="flex items-center gap-4 lg:flex-col lg:items-start">
-          <div className="grid h-16 w-16 place-items-center rounded-xl border bg-white text-trust-untrusted shadow-sm">
-            <Play size={32} strokeWidth={2.4} />
+          <div
+            className={cn(
+              "grid h-16 w-16 place-items-center rounded-xl border bg-white shadow-sm",
+              triggered ? "text-trust-untrusted" : "text-trust-user"
+            )}
+          >
+            <Icon size={32} strokeWidth={2.4} />
           </div>
           <div>
-            <p className="text-3xl font-bold leading-none tracking-tight text-trust-untrusted sm:text-4xl">
-              {triggered ? "TRIGGER" : "CLEAR"}
+            <p
+              className={cn(
+                "text-3xl font-bold leading-none tracking-tight sm:text-4xl",
+                triggered ? "text-trust-untrusted" : "text-trust-user"
+              )}
+            >
+              {triggered ? "BLOCK" : "CLEAR"}
             </p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-moss">
-              Baseline · Guard Off
+              Attack Result
             </p>
           </div>
         </div>
         <div>
           <p className="text-base font-semibold leading-snug">
             {triggered
-              ? "The untrusted claim reached a protected action."
+              ? "The baseline attack should be blocked before deployment."
               : "The payload did not trigger a protected action."}
           </p>
           <p className="mt-1.5 text-sm leading-6 text-ink/75">
-            No provenance check is applied in the baseline run, so the compacted
-            memory can be reused as if it were authorization.
+            {triggered
+              ? "With the guard off, the compacted memory is reused as authorization and reaches a protected action."
+              : "The baseline run did not propose a protected action from this payload."}
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
