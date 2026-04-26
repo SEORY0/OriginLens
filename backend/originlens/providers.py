@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, ValidationError
 from originlens.schemas import PayloadSeed, ProviderAttempt, ProviderEvidence, ProviderMode
 
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
-DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5"
+DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 ProviderName = Literal["gemini", "claude"]
 _COOLDOWN_UNTIL: dict[str, float] = {}
 

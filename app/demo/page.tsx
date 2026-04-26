@@ -2,23 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { BarChart3, Bot, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { BenchmarkEvidenceRunner } from "@/components/BenchmarkEvidenceRunner";
 import { GuardVerdictCard } from "@/components/GuardVerdictCard";
 import { LifecycleTimeline } from "@/components/LifecycleTimeline";
 import { MemoryDiff } from "@/components/MemoryDiff";
-import { MetricsTable } from "@/components/MetricsTable";
 import { ProviderEvidencePanel } from "@/components/ProviderEvidencePanel";
 import { PageShell, Panel, Button, Badge, CodeBlock } from "@/components/ui";
-import type { BenchResponse, CompareResponse, ScenarioTrace } from "@/lib/schemas/core";
+import type { CompareResponse, ScenarioTrace } from "@/lib/schemas/core";
 
 type ProviderMode = "demo" | "hybrid" | "live";
 
 export default function DemoPage() {
   const [trace, setTrace] = useState<ScenarioTrace | null>(null);
-  const [bench, setBench] = useState<BenchResponse | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<"idle" | "baseline" | "guard" | "bench" | "physical">("idle");
   const [providerMode, setProviderMode] = useState<ProviderMode>("hybrid");
+  const [benchRunKey, setBenchRunKey] = useState(0);
 
   async function runCompare(payloadId = "pr_01", nextStage: typeof stage = "baseline") {
     setLoading(nextStage);
@@ -39,28 +39,10 @@ export default function DemoPage() {
     setLoading(null);
   }
 
-  async function runBenchFlow() {
-    setLoading("bench");
+  function runBenchFlow() {
     setError(null);
-    const liveSizedRun = providerMode !== "demo";
-    const response = await fetch("/api/bench/run", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        surfaces: ["pr_description", "readme"],
-        payloadCount: liveSizedRun ? 5 : 50,
-        includeBenign: true,
-        providerMode
-      })
-    });
-    if (!response.ok) {
-      setError(await formatApiError(response));
-      setLoading(null);
-      return;
-    }
-    setBench((await response.json()) as BenchResponse);
     setStage("bench");
-    setLoading(null);
+    setBenchRunKey((key) => key + 1);
   }
 
   const activeTitle = useMemo(() => {
@@ -110,7 +92,6 @@ export default function DemoPage() {
   function selectProviderMode(mode: ProviderMode) {
     setProviderMode(mode);
     setTrace(null);
-    setBench(null);
     setError(null);
     setStage("idle");
   }
@@ -251,10 +232,12 @@ export default function DemoPage() {
         </Panel>
       )}
 
-      {bench ? (
-        <Panel title="Benchmark Evidence" eyebrow="Core payload replay">
-          <MetricsTable summary={bench.summary} results={bench.results} />
-        </Panel>
+      {stage === "bench" ? (
+        <BenchmarkEvidenceRunner
+          initialMode={providerMode}
+          autoRunMode={providerMode}
+          autoRunKey={benchRunKey}
+        />
       ) : null}
     </PageShell>
   );

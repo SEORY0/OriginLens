@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, FileWarning, Gauge, ShieldCheck } from "lucide-react";
+import { ArrowRight, FileWarning, ShieldCheck } from "lucide-react";
 import { Button, PageShell, Panel } from "@/components/ui";
 
 export default function HomePage() {
@@ -22,12 +22,6 @@ export default function HomePage() {
               <Button>
                 <ArrowRight size={16} />
                 Open Demo
-              </Button>
-            </Link>
-            <Link href="/bench">
-              <Button variant="secondary">
-                <Gauge size={16} />
-                View Bench
               </Button>
             </Link>
           </div>
@@ -66,11 +60,11 @@ export default function HomePage() {
             wrong origin chain.
           </p>
         </Panel>
-        <Panel title="Bench">
-          <Gauge className="mb-4 text-blue" />
+        <Panel title="Evidence">
+          <FileWarning className="mb-4 text-blue" />
           <p className="text-sm leading-6 text-ink/70">
             Measures survival, laundering, trigger, guarded trigger, false positive
-            rate, and provenance integrity.
+            rate, and provenance integrity inside the demo flow.
           </p>
         </Panel>
       </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { MetricsTable } from "@/components/MetricsTable";
 import { ReportExportButton } from "@/components/ReportExportButton";
@@ -18,27 +18,35 @@ type HealthStatus = {
 
 export function BenchmarkEvidenceRunner({
   initialBench,
-  health
+  health,
+  initialMode = "demo",
+  autoRunMode,
+  autoRunKey = 0
 }: {
-  initialBench: BenchResponse;
-  health: HealthStatus;
+  initialBench?: BenchResponse;
+  health?: HealthStatus;
+  initialMode?: ProviderMode;
+  autoRunMode?: ProviderMode;
+  autoRunKey?: number;
 }) {
-  const [bench, setBench] = useState(initialBench);
-  const [providerMode, setProviderMode] = useState<ProviderMode>("demo");
+  const [bench, setBench] = useState<BenchResponse | null>(initialBench ?? null);
+  const [providerMode, setProviderMode] = useState<ProviderMode>(initialMode);
   const [loading, setLoading] = useState<ProviderMode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const activeEvidence = useMemo(() => {
-    const liveVerified = bench.summary.source === "live";
+    const liveVerified = bench?.summary.source === "live";
     return {
       tone: liveVerified ? "good" as const : "warn" as const,
       label: liveVerified
-        ? `${bench.summary.provider ?? "live"} / ${bench.summary.model ?? "model"}`
-        : "deterministic fallback"
+        ? `${bench?.summary.provider ?? "live"} / ${bench?.summary.model ?? "model"}`
+        : bench
+          ? "deterministic fallback"
+          : "not run"
     };
   }, [bench]);
 
-  async function runBench(mode: ProviderMode) {
+  const runBench = useCallback(async (mode: ProviderMode) => {
     setProviderMode(mode);
     setLoading(mode);
     setError(null);
@@ -62,22 +70,29 @@ export function BenchmarkEvidenceRunner({
 
     setBench((await response.json()) as BenchResponse);
     setLoading(null);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!autoRunMode || autoRunKey === 0) return;
+    void runBench(autoRunMode);
+  }, [autoRunKey, autoRunMode, runBench]);
 
   return (
-    <Panel title="Benchmark Evidence" eyebrow={`${bench.summary.total} payloads`}>
+    <Panel title="Benchmark Evidence" eyebrow={bench ? `${bench.summary.total} payloads` : "ready"}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Badge tone={activeEvidence.tone}>active evidence: {activeEvidence.label}</Badge>
           <Badge>mode: {providerMode}</Badge>
-          <Badge>order: {health.providerOrder ?? "gemini,claude"}</Badge>
-          <Badge>live keys: {health.keysConfigured ?? 0}</Badge>
-          <Badge>validation: {health.liveValidation ?? "per_request"}</Badge>
+          <Badge>order: {health?.providerOrder ?? "claude,gemini"}</Badge>
+          <Badge>live keys: {health?.keysConfigured ?? "server"}</Badge>
+          <Badge>validation: {health?.liveValidation ?? "per_request"}</Badge>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ReportExportButton runId={bench.summary.runId} />
-          <ReportExportButton runId={bench.summary.runId} format="json" />
-        </div>
+        {bench ? (
+          <div className="flex flex-wrap gap-2">
+            <ReportExportButton runId={bench.summary.runId} />
+            <ReportExportButton runId={bench.summary.runId} format="json" />
+          </div>
+        ) : null}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -95,7 +110,7 @@ export function BenchmarkEvidenceRunner({
       </div>
 
       {error ? <p className="mb-4 text-sm leading-6 text-signal">{error}</p> : null}
-      <MetricsTable summary={bench.summary} results={bench.results} />
+      {bench ? <MetricsTable summary={bench.summary} results={bench.results} /> : null}
     </Panel>
   );
 }
