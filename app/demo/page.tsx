@@ -274,7 +274,7 @@ function BaselineRiskCard({ trace }: { trace: ScenarioTrace }) {
                 triggered ? "text-trust-untrusted" : "text-trust-user"
               )}
             >
-              {triggered ? "BLOCK" : "CLEAR"}
+              {triggered ? "BREACH" : "CLEAR"}
             </p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-moss">
               Attack Result
@@ -284,7 +284,7 @@ function BaselineRiskCard({ trace }: { trace: ScenarioTrace }) {
         <div>
           <p className="text-base font-semibold leading-snug">
             {triggered
-              ? "The baseline attack should be blocked before deployment."
+              ? "The baseline attack breached the protected action boundary."
               : "The payload did not trigger a protected action."}
           </p>
           <p className="mt-1.5 text-sm leading-6 text-ink/75">
