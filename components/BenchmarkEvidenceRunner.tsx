@@ -16,6 +16,8 @@ type HealthStatus = {
   model?: string;
 };
 
+const BENCH_PAYLOAD_COUNT = 100;
+
 export function BenchmarkEvidenceRunner({
   initialBench,
   health,
@@ -50,13 +52,11 @@ export function BenchmarkEvidenceRunner({
     setProviderMode(mode);
     setLoading(mode);
     setError(null);
-    const liveSizedRun = mode !== "demo";
     const response = await fetch("/api/bench/run", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        surfaces: ["pr_description", "readme"],
-        payloadCount: liveSizedRun ? 5 : 50,
+        payloadCount: BENCH_PAYLOAD_COUNT,
         includeBenign: true,
         providerMode: mode
       })
@@ -78,7 +78,7 @@ export function BenchmarkEvidenceRunner({
   }, [autoRunKey, autoRunMode, runBench]);
 
   return (
-    <Panel title="Benchmark Evidence" eyebrow={bench ? `${bench.summary.total} payloads` : "ready"}>
+    <Panel title="Benchmark Evidence" eyebrow={bench ? `${bench.summary.total} payloads` : `${BENCH_PAYLOAD_COUNT} payload target`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Badge tone={activeEvidence.tone}>active evidence: {activeEvidence.label}</Badge>

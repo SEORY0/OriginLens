@@ -145,7 +145,6 @@ export default function DemoPage() {
           onClick={() => runCompare("pr_01", "baseline")}
           disabled={Boolean(loading)}
           loading={loading === "baseline"}
-          variant="primary"
           active={stage === "baseline"}
         />
         <StepButton
@@ -266,7 +265,6 @@ function StepButton({
   onClick,
   disabled,
   loading,
-  variant = "secondary",
   active = false
 }: {
   step: number;
@@ -275,7 +273,6 @@ function StepButton({
   onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: "primary" | "secondary";
   active?: boolean;
 }) {
   return (
@@ -283,11 +280,9 @@ function StepButton({
       onClick={onClick}
       disabled={disabled}
       loading={loading}
-      variant={variant}
-      className={cn(
-        "justify-start text-left",
-        active && variant !== "primary" && "border-ink"
-      )}
+      variant={active ? "primary" : "secondary"}
+      aria-pressed={active}
+      className="justify-start text-left"
     >
       <span className="grid h-5 w-5 place-items-center rounded-full border border-current text-[10px] font-bold">
         {step}

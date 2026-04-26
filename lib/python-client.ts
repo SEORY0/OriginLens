@@ -93,8 +93,7 @@ export async function runBenchFromPython(providerMode: "demo" | "live" | "hybrid
   return pythonJson<BenchResponse>("/bench/run", {
     method: "POST",
     body: JSON.stringify({
-      surfaces: ["pr_description", "readme"],
-      payloadCount: 50,
+      payloadCount: 100,
       includeBenign: true,
       providerMode
     })

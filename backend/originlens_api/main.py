@@ -199,7 +199,7 @@ def runs_get(run_id: str):
 def report_export(runId: str = "latest", format: str = "csv"):
     stored = store.latest("bench") if runId == "latest" else store.get(runId)
     if not stored:
-        bench = run_bench(BenchRequest(payloadCount=50, includeBenign=True))
+        bench = run_bench(BenchRequest(payloadCount=100, includeBenign=True))
         stored = bench.model_dump(mode="json")
         store.save(bench.summary.runId, "bench", bench)
 
