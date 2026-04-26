@@ -11,7 +11,7 @@ from originlens.bench.metrics import run_bench
 from originlens.guard.action_verifier import verify_action
 from originlens.guard.policies import POLICY_MATRIX
 from originlens.payloads import ALL_PAYLOADS, get_payload
-from originlens.providers import provider_status
+from originlens.providers import LiveProviderUnavailable, provider_status
 from originlens.redteam.pipeline import (
     compare_from_trace,
     run_scenario,
@@ -68,6 +68,16 @@ def require_token(authorization: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="Invalid OriginLens API token.")
 
 
+def live_provider_error(exc: LiveProviderUnavailable) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={
+            "message": "Live Gemini mode failed. Replace expired, leaked, or invalid Gemini keys and retry.",
+            "providerEvidence": exc.evidence.model_dump(mode="json"),
+        },
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str | int]:
     status = provider_status()
@@ -79,12 +89,16 @@ def health() -> dict[str, str | int]:
         "gemini": status["gemini"],
         "model": status["model"],
         "keysConfigured": status["keysConfigured"],
+        "liveValidation": status["liveValidation"],
     }
 
 
 @app.post("/scenario/compare", dependencies=[Depends(require_token)])
 def scenario_compare(request: ScenarioRequest):
-    trace = run_scenario(get_payload(request.payloadId), request.providerMode)
+    try:
+        trace = run_scenario(get_payload(request.payloadId), request.providerMode)
+    except LiveProviderUnavailable as exc:
+        raise live_provider_error(exc) from exc
     response = compare_from_trace(trace)
     store.save(trace.runId, "scenario", response)
     return response
@@ -92,7 +106,10 @@ def scenario_compare(request: ScenarioRequest):
 
 @app.post("/scenario/run", dependencies=[Depends(require_token)])
 def scenario_run(request: SingleScenarioRequest):
-    trace = run_scenario(get_payload(request.payloadId), request.providerMode)
+    try:
+        trace = run_scenario(get_payload(request.payloadId), request.providerMode)
+    except LiveProviderUnavailable as exc:
+        raise live_provider_error(exc) from exc
     response = run_single_from_trace(trace, request.mode)
     store.save(trace.runId, "scenario", response)
     return response
@@ -100,7 +117,10 @@ def scenario_run(request: SingleScenarioRequest):
 
 @app.post("/bench/run", dependencies=[Depends(require_token)])
 def bench_run(request: BenchRequest):
-    response = run_bench(request)
+    try:
+        response = run_bench(request)
+    except LiveProviderUnavailable as exc:
+        raise live_provider_error(exc) from exc
     store.save(response.summary.runId, "bench", response)
     return response
 
@@ -131,7 +151,10 @@ def payloads():
 @app.post("/multimodal/extract", dependencies=[Depends(require_token)])
 def multimodal_extract(request: MultimodalRequest):
     payload_id = "physical_01" if request.scenario == "physical_restricted_zone" else "invoice_01"
-    trace = run_scenario(get_payload(payload_id), request.providerMode)
+    try:
+        trace = run_scenario(get_payload(payload_id), request.providerMode)
+    except LiveProviderUnavailable as exc:
+        raise live_provider_error(exc) from exc
     response = {
         "provider": trace.providerEvidence.provider,
         "providerEvidence": trace.providerEvidence.model_dump(mode="json"),

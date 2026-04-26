@@ -1,6 +1,13 @@
+import pytest
+
 from originlens import providers
 from originlens.payloads import get_payload
-from originlens.providers import GeminiAgentOutput, generate_agent_steps, provider_status
+from originlens.providers import (
+    GeminiAgentOutput,
+    LiveProviderUnavailable,
+    generate_agent_steps,
+    provider_status,
+)
 
 
 def _summary(payload):
@@ -61,3 +68,20 @@ def test_all_keys_failed_falls_back(monkeypatch) -> None:
     assert result.reviewerSummary.startswith("fallback summary")
     assert len(result.evidence.attempts) == 2
     assert "bad-one" not in str(result.evidence.model_dump())
+
+
+def test_live_mode_does_not_fall_back(monkeypatch) -> None:
+    providers._COOLDOWN_UNTIL.clear()
+    monkeypatch.setenv("GEMINI_API_KEY_1", "bad-one")
+
+    def fake_generate(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+        raise RuntimeError(f"failed {api_key}")
+
+    monkeypatch.setattr(providers, "_generate_with_gemini", fake_generate)
+
+    with pytest.raises(LiveProviderUnavailable) as exc_info:
+        generate_agent_steps(get_payload("pr_01"), "live", _summary, _memory)
+
+    assert exc_info.value.evidence.source == "fallback"
+    assert exc_info.value.evidence.mode == "live"
+    assert "bad-one" not in str(exc_info.value.evidence.model_dump())

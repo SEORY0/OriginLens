@@ -29,7 +29,7 @@ export default function DemoPage() {
       body: JSON.stringify({ payloadId, providerMode })
     });
     if (!response.ok) {
-      setError(await response.text());
+      setError(await formatApiError(response));
       setLoading(null);
       return;
     }
@@ -53,7 +53,7 @@ export default function DemoPage() {
       })
     });
     if (!response.ok) {
-      setError(await response.text());
+      setError(await formatApiError(response));
       setLoading(null);
       return;
     }
@@ -104,6 +104,22 @@ export default function DemoPage() {
     };
   }, [trace]);
 
+  function selectProviderMode(mode: ProviderMode) {
+    setProviderMode(mode);
+    setTrace(null);
+    setBench(null);
+    setError(null);
+    setStage("idle");
+  }
+
+  const liveBadge = trace
+    ? trace.source === "live"
+      ? "Gemini verified"
+      : "fallback trace"
+    : providerMode === "live"
+      ? "Gemini required"
+      : "fallback-ready";
+
   return (
     <PageShell className="grid gap-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
@@ -120,7 +136,7 @@ export default function DemoPage() {
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Vercel Proxy</Badge>
           <Badge tone={trace?.source === "live" ? "good" : "warn"}>
-            Live: {trace?.source === "live" ? "Gemini" : "fallback-ready"}
+            Live: {liveBadge}
           </Badge>
           <Badge tone="good">Fallback Ready</Badge>
           <Badge>Mode: {providerMode}</Badge>
@@ -132,7 +148,7 @@ export default function DemoPage() {
           <Button
             key={mode}
             variant={providerMode === mode ? "primary" : "secondary"}
-            onClick={() => setProviderMode(mode)}
+            onClick={() => selectProviderMode(mode)}
             disabled={Boolean(loading)}
           >
             {mode}
@@ -168,7 +184,10 @@ export default function DemoPage() {
       </section>
 
       {error ? (
-        <Panel title="Python API unavailable" eyebrow="proxy error">
+        <Panel
+          title={providerMode === "live" ? "Live Gemini run failed" : "Python API unavailable"}
+          eyebrow={providerMode === "live" ? "provider error" : "proxy error"}
+        >
           <p className="text-sm leading-6 text-signal">{error}</p>
         </Panel>
       ) : null}
@@ -236,4 +255,38 @@ export default function DemoPage() {
       ) : null}
     </PageShell>
   );
+}
+
+async function formatApiError(response: Response) {
+  const text = await response.text();
+  try {
+    const body = JSON.parse(text) as {
+      detail?: {
+        message?: string;
+        providerEvidence?: {
+          attempts?: Array<{ key: string; status: string; reason?: string | null }>;
+        };
+      };
+    };
+    const message = body.detail?.message ?? text;
+    const attempts = body.detail?.providerEvidence?.attempts ?? [];
+    const attemptText = attempts
+      .map((attempt) => {
+        const reason = attempt.reason ? ` (${summarizeAttemptReason(attempt.reason)})` : "";
+        return `${attempt.key}: ${attempt.status}${reason}`;
+      })
+      .join("; ");
+    return attemptText ? `${message} Attempts: ${attemptText}` : message;
+  } catch {
+    return text;
+  }
+}
+
+function summarizeAttemptReason(reason: string) {
+  if (reason.includes("API key expired")) return "API key expired";
+  if (reason.includes("reported as leaked")) return "API key reported as leaked";
+  if (reason.includes("PERMISSION_DENIED")) return "permission denied";
+  if (reason.includes("INVALID_ARGUMENT")) return "invalid API key";
+  if (reason.includes("cooldown")) return "cooldown";
+  return reason.length > 120 ? `${reason.slice(0, 117)}...` : reason;
 }

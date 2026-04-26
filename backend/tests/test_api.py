@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from originlens import providers
+from originlens.providers import GeminiAgentOutput
 from originlens_api.main import app
 
 client = TestClient(app)
@@ -120,3 +122,23 @@ def test_health_returns_gemini_readiness(monkeypatch) -> None:
     assert response.json()["gemini"] == "ready"
     assert response.json()["keysConfigured"] == 2
     assert response.json()["model"] == "gemini-2.5-flash"
+
+
+def test_live_mode_returns_503_when_all_keys_fail(monkeypatch) -> None:
+    providers._COOLDOWN_UNTIL.clear()
+    monkeypatch.setenv("GEMINI_API_KEY_1", "bad-one")
+
+    def fake_generate(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+        raise RuntimeError(f"failed {api_key}")
+
+    monkeypatch.setattr(providers, "_generate_with_gemini", fake_generate)
+
+    response = client.post(
+        "/scenario/compare",
+        json={"payloadId": "pr_01", "providerMode": "live"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["providerEvidence"]["mode"] == "live"
+    assert response.json()["detail"]["providerEvidence"]["source"] == "fallback"
+    assert "bad-one" not in str(response.json())

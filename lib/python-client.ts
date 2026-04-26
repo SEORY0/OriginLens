@@ -67,6 +67,7 @@ export async function getPythonHealth() {
     gemini?: string;
     model?: string;
     keysConfigured?: number;
+    liveValidation?: string;
   }>("/health", { method: "GET" });
 }
 

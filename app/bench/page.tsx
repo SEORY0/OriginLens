@@ -30,11 +30,11 @@ export default async function BenchPage() {
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Connected</Badge>
-          <Badge tone={health.live === "ready" ? "good" : "warn"}>
-            Live: {health.live}
+          <Badge tone={(health.keysConfigured ?? 0) > 0 ? "good" : "warn"}>
+            Live keys: {health.keysConfigured ?? 0}
           </Badge>
+          <Badge>Live validation: {health.liveValidation ?? "per_request"}</Badge>
           <Badge>model: {health.model ?? "gemini-2.5-flash"}</Badge>
-          <Badge>keys: {health.keysConfigured ?? 0}</Badge>
           <Badge>source: fallback</Badge>
           <ReportExportButton runId={bench.summary.runId} />
           <ReportExportButton runId={bench.summary.runId} format="json" />

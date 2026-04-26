@@ -29,6 +29,12 @@ class AgentStepResult(BaseModel):
     evidence: ProviderEvidence
 
 
+class LiveProviderUnavailable(RuntimeError):
+    def __init__(self, evidence: ProviderEvidence) -> None:
+        super().__init__("Live Gemini mode failed before producing a model response.")
+        self.evidence = evidence
+
+
 def provider_status() -> dict[str, str | int]:
     keys = gemini_keys()
     gemini_ready = "ready" if keys else "unavailable"
@@ -38,6 +44,7 @@ def provider_status() -> dict[str, str | int]:
         "fallback": "ready",
         "model": gemini_model(),
         "keysConfigured": len(keys),
+        "liveValidation": "per_request",
     }
 
 
@@ -89,6 +96,14 @@ def generate_agent_steps(
     if result:
         return result
 
+    failed_evidence = _fallback_evidence(
+        provider_mode,
+        "Live Gemini mode requires a successful Gemini response, but all configured keys failed.",
+        _last_attempts(payload.id),
+    )
+    if provider_mode == "live":
+        raise LiveProviderUnavailable(failed_evidence)
+
     fallback.evidence = _fallback_evidence(
         provider_mode,
         "Gemini unavailable or all configured keys failed.",
@@ -114,7 +129,7 @@ def _try_gemini_agent_steps(
     for index, key in enumerate(keys, start=1):
         label = f"key_{index}"
         cooldown_until = _COOLDOWN_UNTIL.get(label, 0)
-        if cooldown_until > time.time():
+        if provider_mode != "live" and cooldown_until > time.time():
             attempts.append(ProviderAttempt(key=label, status="skipped", reason="cooldown"))
             continue
         try:
@@ -140,7 +155,8 @@ def _try_gemini_agent_steps(
         except Exception as exc:  # noqa: BLE001 - every provider failure is a failover signal.
             reason = _safe_reason(exc)
             attempts.append(ProviderAttempt(key=label, status="failed", reason=reason))
-            _COOLDOWN_UNTIL[label] = time.time() + cooldown_seconds
+            if provider_mode != "live":
+                _COOLDOWN_UNTIL[label] = time.time() + cooldown_seconds
 
     _remember_attempts(payload.id, attempts)
     return None
