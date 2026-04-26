@@ -10,8 +10,15 @@ export function ProviderEvidencePanel({ evidence }: { evidence?: ProviderEvidenc
     );
   }
 
+  const liveSucceeded = evidence.source === "live" && evidence.provider === "gemini";
+
   return (
     <Panel title="Provider Evidence" eyebrow={`${evidence.provider} / ${evidence.mode}`}>
+      <p className="mb-3 text-sm font-semibold leading-6">
+        {liveSucceeded
+          ? `Gemini responded successfully through ${evidence.selectedKey ?? "a configured key"}.`
+          : "This run used deterministic fallback instead of a successful Gemini response."}
+      </p>
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={evidence.source === "live" ? "good" : "warn"}>
           source: {evidence.source}

@@ -78,6 +78,32 @@ export default function DemoPage() {
     return "Run the baseline attack, then replay the same memory with OriginLens Guard.";
   }, [stage]);
 
+  const runStatus = useMemo(() => {
+    if (!trace) return null;
+    const evidence = trace.providerEvidence;
+    const liveSucceeded = evidence.source === "live" && evidence.provider === "gemini";
+    const guardBlocked = trace.guarded.verdict.verdict === "BLOCK" && !trace.guarded.trigger;
+    if (liveSucceeded && guardBlocked) {
+      return {
+        title: "Live Gemini E2E succeeded.",
+        detail: `Gemini ${evidence.model} generated the reviewer summary and compacted memory using ${evidence.selectedKey ?? "a configured key"}; OriginLens then blocked the protected action.`,
+        tone: "good" as const
+      };
+    }
+    if (liveSucceeded) {
+      return {
+        title: "Live Gemini call succeeded.",
+        detail: `Gemini ${evidence.model} produced the trace using ${evidence.selectedKey ?? "a configured key"}; review the guard verdict below.`,
+        tone: "warn" as const
+      };
+    }
+    return {
+      title: "Gemini live call fell back.",
+      detail: evidence.fallbackReason ?? "The deterministic fallback trace was used.",
+      tone: "warn" as const
+    };
+  }, [trace]);
+
   return (
     <PageShell className="grid gap-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
@@ -150,11 +176,35 @@ export default function DemoPage() {
       {trace ? (
         <section className="grid gap-4 lg:grid-cols-2">
           <Panel title="Presentation Cue" eyebrow="say this">
-            <p className="text-lg font-semibold leading-7">{speakerNote}</p>
-            <p className="mt-3 text-sm leading-6 text-ink/70">
-              Execution is {String(trace.action.args.execution ?? "mock_only")}; no real
-              command, transmission, or actuator is used.
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Badge tone={runStatus?.tone ?? "neutral"}>
+                {trace.source === "live" ? "Gemini live verified" : "fallback trace"}
+              </Badge>
+              <Badge tone={trace.guarded.verdict.verdict === "BLOCK" ? "good" : "warn"}>
+                Guard: {trace.guarded.verdict.verdict}
+              </Badge>
+            </div>
+            <p className="text-lg font-semibold leading-7">
+              {runStatus?.title ?? speakerNote}
             </p>
+            <p className="mt-3 text-sm leading-6 text-ink/70">{runStatus?.detail}</p>
+            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+              <div className="rounded border border-line bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Model</p>
+                <p className="mt-1 font-semibold">{trace.providerEvidence.model}</p>
+              </div>
+              <div className="rounded border border-line bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Key</p>
+                <p className="mt-1 font-semibold">{trace.providerEvidence.selectedKey ?? "none"}</p>
+              </div>
+              <div className="rounded border border-line bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-moss">Result</p>
+                <p className="mt-1 font-semibold">
+                  {trace.baseline.trigger ? "Baseline triggered" : "Baseline clear"} /{" "}
+                  {trace.guarded.trigger ? "Guard triggered" : "Guard blocked"}
+                </p>
+              </div>
+            </div>
           </Panel>
           <ProviderEvidencePanel evidence={trace.providerEvidence} />
           <Panel title="Lifecycle Timeline" eyebrow="Trace">
