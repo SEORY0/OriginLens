@@ -1,8 +1,8 @@
 # OriginLens
 
-> **컨텍스트가 메모리가 되는 순간을 공격하고, 메모리가 행동이 되기 전에 출처를 검증합니다.**
+> **We attack the moment context becomes memory, and verify provenance before memory becomes action.**
 
-OriginLens는 AI agent를 배포하기 전에, 외부 파일·문서·이미지·센서 입력 같은 **untrusted context**가 agent의 요약, compaction, memory, retrieval 과정을 거쳐 **trusted instruction** 또는 **unauthorized action**으로 세탁되는지 자동으로 테스트하고 방어하는 웹 기반 AI Safety 플랫폼이다.
+OriginLens is a web-based AI Safety platform that automatically tests and defends AI agents before deployment, checking whether **untrusted context** such as external files, documents, images, and sensor inputs can be laundered through an agent's summarization, compaction, memory, and retrieval pipeline into **trusted instructions** or **unauthorized actions**.
 
 ## Product Overview
 
