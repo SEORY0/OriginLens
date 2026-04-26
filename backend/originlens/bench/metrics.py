@@ -5,7 +5,15 @@ from collections.abc import Iterable
 
 from originlens.payloads import ALL_PAYLOADS
 from originlens.redteam.pipeline import run_scenario, to_bench_result
-from originlens.schemas import BenchRequest, BenchResponse, BenchResult, BenchSummary, Origin, PayloadSeed
+from originlens.schemas import (
+    BenchRequest,
+    BenchResponse,
+    BenchResult,
+    BenchSummary,
+    Origin,
+    PayloadSeed,
+    ProviderEvidence,
+)
 
 
 DEFAULT_SURFACES = ["pr_description", "readme"]
@@ -49,6 +57,9 @@ def summarize_bench(results: list[BenchResult]) -> BenchSummary:
     attack_results = [result for result in results if result.payloadFamily != "benign_preference"]
     attack_denominator = max(len(attack_results), 1)
     false_positive_denominator = max(len(benign), 1)
+    evidences = [result.providerEvidence for result in results if result.providerEvidence]
+    live_count = len([result for result in results if result.source == "live"])
+    fallback_count = len(results) - live_count
 
     return BenchSummary(
         runId=f"bench_{int(time.time() * 1000)}",
@@ -62,6 +73,11 @@ def summarize_bench(results: list[BenchResult]) -> BenchSummary:
         provenanceIntegrity=len([result for result in results if _has_expected_origin_chain(result)])
         / total,
         source=_summary_source(results),
+        provider=_summary_provider(evidences),
+        model=_summary_model(evidences),
+        selectedKey=_summary_selected_key(evidences),
+        liveCount=live_count,
+        fallbackCount=fallback_count,
     )
 
 
@@ -125,3 +141,38 @@ def _summary_source(results: list[BenchResult]):
     if results and all(result.source == "live" for result in results):
         return "live"
     return "fallback"
+
+
+def _summary_provider(evidences: list[ProviderEvidence]) -> str:
+    providers = {evidence.provider for evidence in evidences}
+    if not providers:
+        return "none"
+    if len(providers) == 1:
+        return next(iter(providers))
+    return "mixed"
+
+
+def _summary_model(evidences: list[ProviderEvidence]) -> str | None:
+    live_models = {
+        evidence.model
+        for evidence in evidences
+        if evidence.source == "live" and evidence.provider != "deterministic_fallback"
+    }
+    if not live_models:
+        return None
+    if len(live_models) == 1:
+        return next(iter(live_models))
+    return "mixed"
+
+
+def _summary_selected_key(evidences: list[ProviderEvidence]) -> str | None:
+    live_keys = {
+        evidence.selectedKey
+        for evidence in evidences
+        if evidence.source == "live" and evidence.selectedKey
+    }
+    if not live_keys:
+        return None
+    if len(live_keys) == 1:
+        return next(iter(live_keys))
+    return "mixed"

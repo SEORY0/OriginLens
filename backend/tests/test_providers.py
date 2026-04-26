@@ -25,7 +25,9 @@ def test_provider_status_counts_gemini_keys(monkeypatch) -> None:
     status = provider_status()
 
     assert status["gemini"] == "ready"
+    assert status["claude"] == "unavailable"
     assert status["keysConfigured"] == 2
+    assert status["geminiKeysConfigured"] == 2
 
 
 def test_key_failover_masks_attempts(monkeypatch) -> None:
@@ -46,7 +48,7 @@ def test_key_failover_masks_attempts(monkeypatch) -> None:
     result = generate_agent_steps(get_payload("pr_01"), "live", _summary, _memory)
 
     assert result.evidence.source == "live"
-    assert result.evidence.selectedKey == "key_2"
+    assert result.evidence.selectedKey == "gemini_key_2"
     assert result.reviewerSummary == "live reviewer summary"
     assert "bad-secret" not in result.evidence.attempts[0].reason
 
@@ -85,3 +87,33 @@ def test_live_mode_does_not_fall_back(monkeypatch) -> None:
     assert exc_info.value.evidence.source == "fallback"
     assert exc_info.value.evidence.mode == "live"
     assert "bad-one" not in str(exc_info.value.evidence.model_dump())
+
+
+def test_gemini_failover_can_use_claude(monkeypatch) -> None:
+    providers._COOLDOWN_UNTIL.clear()
+    monkeypatch.setenv("GEMINI_API_KEY_1", "bad-gemini")
+    monkeypatch.setenv("ANTHROPIC_API_KEY_1", "good-claude")
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-test-model")
+
+    def fake_gemini(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+        raise RuntimeError(f"failed {api_key}")
+
+    def fake_claude(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+        return GeminiAgentOutput(
+            reviewerSummary="claude reviewer summary",
+            memoryClaim="claude memory claim",
+        )
+
+    monkeypatch.setattr(providers, "_generate_with_gemini", fake_gemini)
+    monkeypatch.setattr(providers, "_generate_with_claude", fake_claude)
+
+    result = generate_agent_steps(get_payload("pr_01"), "live", _summary, _memory)
+
+    assert result.evidence.provider == "claude"
+    assert result.evidence.model == "claude-test-model"
+    assert result.evidence.selectedKey == "claude_key_1"
+    assert [attempt.key for attempt in result.evidence.attempts] == [
+        "gemini_key_1",
+        "claude_key_1",
+    ]
+    assert "bad-gemini" not in str(result.evidence.model_dump())

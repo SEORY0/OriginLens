@@ -34,14 +34,14 @@ export function LiveBenchRunner() {
   }
 
   return (
-    <Panel title="Live Gemini Bench" eyebrow="small e2e run">
+    <Panel title="Live Provider Bench" eyebrow="small e2e run">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button onClick={runLiveBench} disabled={loading}>
           <Zap size={16} />
-          Run Live Gemini Bench
+          Run Live Provider Bench
         </Button>
         <p className="text-sm text-ink/70">
-          Runs 5 payloads through Gemini with deterministic guard checks.
+          Runs 5 payloads through the configured live provider with deterministic guard checks.
         </p>
       </div>
       {error ? <p className="text-sm text-signal">{error}</p> : null}

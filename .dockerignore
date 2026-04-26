@@ -1,7 +1,11 @@
-node_modules
-.next
-.venv
-data
-backend/data
 .git
+.next
+node_modules
+.venv
+.env
+.env.*
+backend/.env
+backend/.env.*
+backend/data
+data
 *.log

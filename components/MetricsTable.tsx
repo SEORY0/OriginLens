@@ -28,8 +28,31 @@ export function MetricsTable({
     return "clear";
   };
 
+  const evidenceLabel = (result: BenchResult) => {
+    const evidence = result.providerEvidence;
+    if (!evidence) {
+      return "unknown";
+    }
+    if (evidence.source === "live" && evidence.provider !== "deterministic_fallback") {
+      return `${evidence.provider} / ${evidence.model} / ${evidence.selectedKey ?? "key"}`;
+    }
+    return evidence.provider;
+  };
+
+  const summaryModel =
+    summary.source === "live" && summary.model ? summary.model : "deterministic fallback";
+
   return (
     <div className="grid gap-4">
+      <div className="flex flex-wrap gap-2">
+        <Badge tone={summary.source === "live" ? "good" : "warn"}>
+          source: {summary.source}
+        </Badge>
+        <Badge>provider: {summary.provider ?? "deterministic_fallback"}</Badge>
+        <Badge>model: {summaryModel}</Badge>
+        <Badge>live rows: {summary.liveCount ?? 0}</Badge>
+        <Badge>fallback rows: {summary.fallbackCount ?? results.length}</Badge>
+      </div>
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {metrics.map(([label, value]) => (
           <div key={label} className="rounded border border-line bg-white p-3">
@@ -73,12 +96,12 @@ export function MetricsTable({
                 <td className="max-w-[280px] px-3 py-3 text-xs text-ink/70">
                   {result.guardVerdict?.reason}
                 </td>
-                <td className="px-3 py-3">{result.source}</td>
                 <td className="px-3 py-3">
-                  {result.providerEvidence?.selectedKey ??
-                    result.providerEvidence?.provider ??
-                    "fallback"}
+                  <Badge tone={result.source === "live" ? "good" : "warn"}>
+                    {result.source}
+                  </Badge>
                 </td>
+                <td className="px-3 py-3">{evidenceLabel(result)}</td>
               </tr>
             ))}
           </tbody>

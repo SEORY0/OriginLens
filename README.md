@@ -98,7 +98,15 @@ Backend:
 ORIGINLENS_API_TOKEN=replace-with-random-token
 ORIGINLENS_ENV=production
 ORIGINLENS_DB_PATH=/app/data/originlens.db
+ORIGINLENS_PROVIDER_ORDER=gemini,claude
+ANTHROPIC_API_KEY_1=
+ANTHROPIC_API_KEY_2=
+ANTHROPIC_API_KEY_3=
+ANTHROPIC_API_KEY_4=
 ANTHROPIC_API_KEY=
+CLAUDE_MODEL=claude-sonnet-4-5
+CLAUDE_TIMEOUT_SECONDS=20
+CLAUDE_KEY_COOLDOWN_SECONDS=60
 GOOGLE_GENERATIVE_AI_API_KEY=
 GEMINI_API_KEY_1=
 GEMINI_API_KEY_2=
@@ -109,7 +117,7 @@ GEMINI_TIMEOUT_SECONDS=20
 GEMINI_KEY_COOLDOWN_SECONDS=60
 ```
 
-Live Gemini is optional. Put real Gemini keys only in `backend/.env`; do not add them to Vercel or GitHub. In `hybrid` or `live` mode, the backend tries `GEMINI_API_KEY_1` through `GEMINI_API_KEY_4` in order and falls back to deterministic traces if every key fails.
+Live providers are optional. Put real Gemini or Claude keys only in `backend/.env`; do not add them to Vercel or GitHub. In `hybrid` or `live` mode, the backend follows `ORIGINLENS_PROVIDER_ORDER` and tries Gemini keys, then Claude keys, unless you change the order. `live` mode requires a successful provider response; `hybrid` falls back to deterministic traces if every key fails.
 
 ## Local Development
 

@@ -73,7 +73,7 @@ export const providerAttemptSchema = z.object({
 });
 
 export const providerEvidenceSchema = z.object({
-  provider: z.enum(["gemini", "deterministic_fallback"]),
+  provider: z.enum(["gemini", "claude", "deterministic_fallback"]),
   mode: providerModeSchema,
   model: z.string(),
   source: sourceSchema,
@@ -190,6 +190,11 @@ export type BenchSummary = {
   falsePositiveRate: number;
   provenanceIntegrity: number;
   source: "live" | "fallback";
+  provider?: string;
+  model?: string | null;
+  selectedKey?: string | null;
+  liveCount?: number;
+  fallbackCount?: number;
 };
 
 export type BenchResponse = {

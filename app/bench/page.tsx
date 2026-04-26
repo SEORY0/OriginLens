@@ -33,9 +33,10 @@ export default async function BenchPage() {
           <Badge tone={(health.keysConfigured ?? 0) > 0 ? "good" : "warn"}>
             Live keys: {health.keysConfigured ?? 0}
           </Badge>
+          <Badge>order: {health.providerOrder ?? "gemini,claude"}</Badge>
           <Badge>Live validation: {health.liveValidation ?? "per_request"}</Badge>
-          <Badge>model: {health.model ?? "gemini-2.5-flash"}</Badge>
-          <Badge>source: fallback</Badge>
+          <Badge>default source: {bench.summary.source}</Badge>
+          <Badge>live model: {health.model ?? "gemini-2.5-flash"}</Badge>
           <ReportExportButton runId={bench.summary.runId} />
           <ReportExportButton runId={bench.summary.runId} format="json" />
         </div>

@@ -4,13 +4,15 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
-from typing import Callable
+from typing import Callable, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
 from originlens.schemas import PayloadSeed, ProviderAttempt, ProviderEvidence, ProviderMode
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5"
+ProviderName = Literal["gemini", "claude"]
 _COOLDOWN_UNTIL: dict[str, float] = {}
 
 
@@ -31,44 +33,107 @@ class AgentStepResult(BaseModel):
 
 class LiveProviderUnavailable(RuntimeError):
     def __init__(self, evidence: ProviderEvidence) -> None:
-        super().__init__("Live Gemini mode failed before producing a model response.")
+        super().__init__("Live provider mode failed before producing a model response.")
         self.evidence = evidence
 
 
 def provider_status() -> dict[str, str | int]:
-    keys = gemini_keys()
-    gemini_ready = "ready" if keys else "unavailable"
+    gemini_key_count = len(gemini_keys())
+    claude_key_count = len(claude_keys())
+    keys_configured = gemini_key_count + claude_key_count
+    gemini_ready = "ready" if gemini_key_count else "unavailable"
+    claude_ready = "ready" if claude_key_count else "unavailable"
+    live_ready = "ready" if keys_configured else "unavailable"
     return {
-        "live": gemini_ready,
+        "live": live_ready,
         "gemini": gemini_ready,
+        "claude": claude_ready,
         "fallback": "ready",
-        "model": gemini_model(),
-        "keysConfigured": len(keys),
+        "model": primary_live_model(),
+        "geminiModel": gemini_model(),
+        "claudeModel": claude_model(),
+        "keysConfigured": keys_configured,
+        "geminiKeysConfigured": gemini_key_count,
+        "claudeKeysConfigured": claude_key_count,
+        "providerOrder": ",".join(provider_order()),
         "liveValidation": "per_request",
     }
 
 
 def gemini_model() -> str:
-    return os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+    return os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
+
+
+def claude_model() -> str:
+    return os.getenv("CLAUDE_MODEL") or DEFAULT_CLAUDE_MODEL
+
+
+def primary_live_model() -> str:
+    for provider in provider_order():
+        if provider == "gemini" and gemini_keys():
+            return gemini_model()
+        if provider == "claude" and claude_keys():
+            return claude_model()
+    return gemini_model()
+
+
+def provider_order() -> list[ProviderName]:
+    raw = os.getenv("ORIGINLENS_PROVIDER_ORDER", "gemini,claude")
+    requested = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    order: list[ProviderName] = []
+    for item in requested:
+        if item in {"gemini", "google"} and "gemini" not in order:
+            order.append("gemini")
+        if item in {"claude", "anthropic"} and "claude" not in order:
+            order.append("claude")
+    for provider in ["gemini", "claude"]:
+        if provider not in order:
+            order.append(provider)
+    return order
 
 
 def gemini_keys() -> list[str]:
-    keys: list[str] = []
-    csv_keys = os.getenv("GEMINI_API_KEYS", "")
-    keys.extend(key.strip() for key in csv_keys.split(",") if key.strip())
-    keys.extend(
-        os.getenv(name, "").strip()
-        for name in [
-            "GEMINI_API_KEY_1",
-            "GEMINI_API_KEY_2",
-            "GEMINI_API_KEY_3",
-            "GEMINI_API_KEY_4",
-            "GOOGLE_GENERATIVE_AI_API_KEY",
-            "GEMINI_API_KEY",
-            "GOOGLE_API_KEY",
+    return _dedupe_keys(
+        [
+            *[key.strip() for key in os.getenv("GEMINI_API_KEYS", "").split(",") if key.strip()],
+            *[
+                os.getenv(name, "").strip()
+                for name in [
+                    "GEMINI_API_KEY_1",
+                    "GEMINI_API_KEY_2",
+                    "GEMINI_API_KEY_3",
+                    "GEMINI_API_KEY_4",
+                    "GOOGLE_GENERATIVE_AI_API_KEY",
+                    "GEMINI_API_KEY",
+                    "GOOGLE_API_KEY",
+                ]
+                if os.getenv(name, "").strip()
+            ],
         ]
-        if os.getenv(name, "").strip()
     )
+
+
+def claude_keys() -> list[str]:
+    return _dedupe_keys(
+        [
+            *[key.strip() for key in os.getenv("ANTHROPIC_API_KEYS", "").split(",") if key.strip()],
+            *[
+                os.getenv(name, "").strip()
+                for name in [
+                    "ANTHROPIC_API_KEY_1",
+                    "ANTHROPIC_API_KEY_2",
+                    "ANTHROPIC_API_KEY_3",
+                    "ANTHROPIC_API_KEY_4",
+                    "ANTHROPIC_API_KEY",
+                    "CLAUDE_API_KEY",
+                ]
+                if os.getenv(name, "").strip()
+            ],
+        ]
+    )
+
+
+def _dedupe_keys(keys: list[str]) -> list[str]:
     deduped: list[str] = []
     seen: set[str] = set()
     for key in keys:
@@ -92,54 +157,57 @@ def generate_agent_steps(
     if provider_mode == "demo":
         return fallback
 
-    result = _try_gemini_agent_steps(payload, provider_mode)
-    if result:
-        return result
+    attempts: list[ProviderAttempt] = []
+    for provider in provider_order():
+        result = _try_provider_agent_steps(payload, provider, provider_mode, attempts)
+        if result:
+            return result
 
     failed_evidence = _fallback_evidence(
         provider_mode,
-        "Live Gemini mode requires a successful Gemini response, but all configured keys failed.",
-        _last_attempts(payload.id),
+        "Live mode requires a successful Gemini or Claude response, but all configured keys failed.",
+        attempts,
     )
     if provider_mode == "live":
         raise LiveProviderUnavailable(failed_evidence)
 
     fallback.evidence = _fallback_evidence(
         provider_mode,
-        "Gemini unavailable or all configured keys failed.",
-        _last_attempts(payload.id),
+        "Gemini and Claude unavailable or all configured keys failed.",
+        attempts,
     )
+    _remember_attempts(payload.id, attempts)
     return fallback
 
 
-def _try_gemini_agent_steps(
+def _try_provider_agent_steps(
     payload: PayloadSeed,
+    provider: ProviderName,
     provider_mode: ProviderMode,
+    attempts: list[ProviderAttempt],
 ) -> AgentStepResult | None:
-    keys = gemini_keys()
-    attempts: list[ProviderAttempt] = []
+    keys = gemini_keys() if provider == "gemini" else claude_keys()
     if not keys:
-        _remember_attempts(payload.id, attempts)
         return None
 
-    model = gemini_model()
-    timeout_seconds = _env_int("GEMINI_TIMEOUT_SECONDS", 20)
-    cooldown_seconds = _env_int("GEMINI_KEY_COOLDOWN_SECONDS", 60)
+    model = gemini_model() if provider == "gemini" else claude_model()
+    timeout_seconds = _provider_timeout_seconds(provider)
+    cooldown_seconds = _provider_cooldown_seconds(provider)
 
     for index, key in enumerate(keys, start=1):
-        label = f"key_{index}"
+        label = f"{provider}_key_{index}"
         cooldown_until = _COOLDOWN_UNTIL.get(label, 0)
         if provider_mode != "live" and cooldown_until > time.time():
             attempts.append(ProviderAttempt(key=label, status="skipped", reason="cooldown"))
             continue
         try:
             output = _call_with_timeout(
-                lambda: _generate_with_gemini(key, model, _agent_prompt(payload)),
+                lambda: _generate_with_provider(provider, key, model, _agent_prompt(payload)),
                 timeout_seconds,
             )
             attempts.append(ProviderAttempt(key=label, status="ok"))
             evidence = ProviderEvidence(
-                provider="gemini",
+                provider=provider,
                 mode=provider_mode,
                 model=model,
                 source="live",
@@ -158,8 +226,18 @@ def _try_gemini_agent_steps(
             if provider_mode != "live":
                 _COOLDOWN_UNTIL[label] = time.time() + cooldown_seconds
 
-    _remember_attempts(payload.id, attempts)
     return None
+
+
+def _generate_with_provider(
+    provider: ProviderName,
+    api_key: str,
+    model: str,
+    prompt: str,
+) -> GeminiAgentOutput:
+    if provider == "gemini":
+        return _generate_with_gemini(api_key, model, prompt)
+    return _generate_with_claude(api_key, model, prompt)
 
 
 def _generate_with_gemini(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
@@ -180,10 +258,59 @@ def _generate_with_gemini(api_key: str, model: str, prompt: str) -> GeminiAgentO
     text = getattr(response, "text", None)
     if not text:
         raise ValueError("empty Gemini response")
+    return _parse_agent_output(text)
+
+
+def _generate_with_claude(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+    try:
+        from anthropic import Anthropic
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError("anthropic SDK unavailable") from exc
+
+    client = Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model=model,
+        max_tokens=512,
+        temperature=0,
+        system=(
+            "You are the reviewer and memory compactor inside OriginLens. "
+            "Return only a JSON object with reviewerSummary and memoryClaim string fields."
+        ),
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = _anthropic_text(message)
+    if not text:
+        raise ValueError("empty Claude response")
+    return _parse_agent_output(text)
+
+
+def _anthropic_text(message) -> str:
+    parts: list[str] = []
+    for block in getattr(message, "content", []) or []:
+        if getattr(block, "type", None) == "text":
+            parts.append(getattr(block, "text", ""))
+        elif isinstance(block, dict) and block.get("type") == "text":
+            parts.append(str(block.get("text", "")))
+    return "\n".join(part for part in parts if part).strip()
+
+
+def _parse_agent_output(text: str) -> GeminiAgentOutput:
     try:
         return GeminiAgentOutput.model_validate_json(text)
     except ValidationError:
-        return GeminiAgentOutput.model_validate(json.loads(text))
+        return GeminiAgentOutput.model_validate(json.loads(_extract_json_object(text)))
+
+
+def _extract_json_object(text: str) -> str:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.removeprefix("```json").removeprefix("```").strip()
+        stripped = stripped.removesuffix("```").strip()
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return stripped
+    return stripped[start : end + 1]
 
 
 def _agent_prompt(payload: PayloadSeed) -> str:
@@ -212,7 +339,7 @@ def _fallback_evidence(
     return ProviderEvidence(
         provider="deterministic_fallback",
         mode=provider_mode,
-        model=gemini_model(),
+        model=primary_live_model(),
         source="fallback",
         attempts=attempts or [],
         fallbackReason=fallback_reason,
@@ -226,9 +353,24 @@ def _call_with_timeout(fn: Callable[[], GeminiAgentOutput], timeout_seconds: int
         return future.result(timeout=timeout_seconds)
     except TimeoutError as exc:
         future.cancel()
-        raise TimeoutError(f"Gemini request timed out after {timeout_seconds}s") from exc
+        raise TimeoutError(f"Provider request timed out after {timeout_seconds}s") from exc
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _provider_timeout_seconds(provider: ProviderName) -> int:
+    if provider == "claude":
+        return _env_int("CLAUDE_TIMEOUT_SECONDS", _env_int("ANTHROPIC_TIMEOUT_SECONDS", 20))
+    return _env_int("GEMINI_TIMEOUT_SECONDS", 20)
+
+
+def _provider_cooldown_seconds(provider: ProviderName) -> int:
+    if provider == "claude":
+        return _env_int(
+            "CLAUDE_KEY_COOLDOWN_SECONDS",
+            _env_int("ANTHROPIC_KEY_COOLDOWN_SECONDS", 60),
+        )
+    return _env_int("GEMINI_KEY_COOLDOWN_SECONDS", 60)
 
 
 def _env_int(name: str, default: int) -> int:
@@ -240,7 +382,7 @@ def _env_int(name: str, default: int) -> int:
 
 def _safe_reason(exc: Exception) -> str:
     text = str(exc) or exc.__class__.__name__
-    for key in gemini_keys():
+    for key in [*gemini_keys(), *claude_keys()]:
         text = text.replace(key, "[redacted]")
     return text[:180]
 

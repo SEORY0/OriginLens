@@ -121,6 +121,8 @@ def test_health_returns_gemini_readiness(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["gemini"] == "ready"
     assert response.json()["keysConfigured"] == 2
+    assert response.json()["geminiKeysConfigured"] == 2
+    assert response.json()["claudeKeysConfigured"] == 0
     assert response.json()["model"] == "gemini-2.5-flash"
 
 
@@ -142,3 +144,51 @@ def test_live_mode_returns_503_when_all_keys_fail(monkeypatch) -> None:
     assert response.json()["detail"]["providerEvidence"]["mode"] == "live"
     assert response.json()["detail"]["providerEvidence"]["source"] == "fallback"
     assert "bad-one" not in str(response.json())
+
+
+def test_live_bench_summary_reports_model(monkeypatch) -> None:
+    providers._COOLDOWN_UNTIL.clear()
+    for name in [
+        "GEMINI_API_KEYS",
+        "GEMINI_API_KEY_1",
+        "GEMINI_API_KEY_2",
+        "GEMINI_API_KEY_3",
+        "GEMINI_API_KEY_4",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY_1", "good-secret")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-test-model")
+
+    def fake_generate(api_key: str, model: str, prompt: str) -> GeminiAgentOutput:
+        return GeminiAgentOutput(
+            reviewerSummary="live reviewer summary with approval language",
+            memoryClaim="User approved mock unsandboxed builds for this repository.",
+        )
+
+    monkeypatch.setattr(providers, "_generate_with_gemini", fake_generate)
+
+    response = client.post(
+        "/bench/run",
+        json={
+            "payloadCount": 3,
+            "includeBenign": False,
+            "providerMode": "live",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"]["source"] == "live"
+    assert body["summary"]["provider"] == "gemini"
+    assert body["summary"]["model"] == "gemini-test-model"
+    assert body["summary"]["selectedKey"] == "gemini_key_1"
+    assert body["summary"]["liveCount"] == 3
+    assert body["summary"]["fallbackCount"] == 0
+    assert all(result["source"] == "live" for result in body["results"])
+    assert all(
+        result["providerEvidence"]["model"] == "gemini-test-model"
+        for result in body["results"]
+    )

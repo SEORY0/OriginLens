@@ -42,14 +42,16 @@ export default function DemoPage() {
   async function runBenchFlow() {
     setLoading("bench");
     setError(null);
+    const liveBench = providerMode === "live";
+    const benchProviderMode = liveBench ? "live" : "demo";
     const response = await fetch("/api/bench/run", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         surfaces: ["pr_description", "readme"],
-        payloadCount: 50,
+        payloadCount: liveBench ? 5 : 50,
         includeBenign: true,
-        providerMode: "demo"
+        providerMode: benchProviderMode
       })
     });
     if (!response.ok) {
@@ -81,24 +83,26 @@ export default function DemoPage() {
   const runStatus = useMemo(() => {
     if (!trace) return null;
     const evidence = trace.providerEvidence;
-    const liveSucceeded = evidence.source === "live" && evidence.provider === "gemini";
+    const liveSucceeded =
+      evidence.source === "live" && evidence.provider !== "deterministic_fallback";
+    const providerName = evidence.provider === "claude" ? "Claude" : "Gemini";
     const guardBlocked = trace.guarded.verdict.verdict === "BLOCK" && !trace.guarded.trigger;
     if (liveSucceeded && guardBlocked) {
       return {
-        title: "Live Gemini E2E succeeded.",
-        detail: `Gemini ${evidence.model} generated the reviewer summary and compacted memory using ${evidence.selectedKey ?? "a configured key"}; OriginLens then blocked the protected action.`,
+        title: `Live ${providerName} E2E succeeded.`,
+        detail: `${providerName} ${evidence.model} generated the reviewer summary and compacted memory using ${evidence.selectedKey ?? "a configured key"}; OriginLens then blocked the protected action.`,
         tone: "good" as const
       };
     }
     if (liveSucceeded) {
       return {
-        title: "Live Gemini call succeeded.",
-        detail: `Gemini ${evidence.model} produced the trace using ${evidence.selectedKey ?? "a configured key"}; review the guard verdict below.`,
+        title: `Live ${providerName} call succeeded.`,
+        detail: `${providerName} ${evidence.model} produced the trace using ${evidence.selectedKey ?? "a configured key"}; review the guard verdict below.`,
         tone: "warn" as const
       };
     }
     return {
-      title: "Gemini live call fell back.",
+      title: "Live provider call fell back.",
       detail: evidence.fallbackReason ?? "The deterministic fallback trace was used.",
       tone: "warn" as const
     };
@@ -114,10 +118,10 @@ export default function DemoPage() {
 
   const liveBadge = trace
     ? trace.source === "live"
-      ? "Gemini verified"
+      ? `${trace.providerEvidence.provider} verified`
       : "fallback trace"
     : providerMode === "live"
-      ? "Gemini required"
+      ? "live provider required"
       : "fallback-ready";
 
   return (
@@ -185,7 +189,7 @@ export default function DemoPage() {
 
       {error ? (
         <Panel
-          title={providerMode === "live" ? "Live Gemini run failed" : "Python API unavailable"}
+          title={providerMode === "live" ? "Live provider run failed" : "Python API unavailable"}
           eyebrow={providerMode === "live" ? "provider error" : "proxy error"}
         >
           <p className="text-sm leading-6 text-signal">{error}</p>
@@ -197,7 +201,7 @@ export default function DemoPage() {
           <Panel title="Presentation Cue" eyebrow="say this">
             <div className="mb-3 flex flex-wrap gap-2">
               <Badge tone={runStatus?.tone ?? "neutral"}>
-                {trace.source === "live" ? "Gemini live verified" : "fallback trace"}
+                {trace.source === "live" ? `${trace.providerEvidence.provider} live verified` : "fallback trace"}
               </Badge>
               <Badge tone={trace.guarded.verdict.verdict === "BLOCK" ? "good" : "warn"}>
                 Guard: {trace.guarded.verdict.verdict}

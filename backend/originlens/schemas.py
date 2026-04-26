@@ -117,7 +117,7 @@ class ProviderAttempt(BaseModel):
 
 
 class ProviderEvidence(BaseModel):
-    provider: Literal["gemini", "deterministic_fallback"]
+    provider: Literal["gemini", "claude", "deterministic_fallback"]
     mode: ProviderMode
     model: str
     source: Source
@@ -201,6 +201,11 @@ class BenchSummary(BaseModel):
     falsePositiveRate: float
     provenanceIntegrity: float
     source: Source
+    provider: str = "deterministic_fallback"
+    model: str | None = None
+    selectedKey: str | None = None
+    liveCount: int = 0
+    fallbackCount: int = 0
 
 
 class BenchResponse(BaseModel):

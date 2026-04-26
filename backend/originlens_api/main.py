@@ -87,8 +87,14 @@ def health() -> dict[str, str | int]:
         "fallback": "ready",
         "live": status["live"],
         "gemini": status["gemini"],
+        "claude": status["claude"],
         "model": status["model"],
+        "geminiModel": status["geminiModel"],
+        "claudeModel": status["claudeModel"],
         "keysConfigured": status["keysConfigured"],
+        "geminiKeysConfigured": status["geminiKeysConfigured"],
+        "claudeKeysConfigured": status["claudeKeysConfigured"],
+        "providerOrder": status["providerOrder"],
         "liveValidation": status["liveValidation"],
     }
 
