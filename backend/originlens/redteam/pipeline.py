@@ -6,6 +6,7 @@ from originlens.guard.action_verifier import verify_action
 from originlens.guard.compaction_gate import inspect_compaction
 from originlens.guard.memory_gate import inspect_memory_write
 from originlens.guard.provenance_ledger import ProvenanceLedger, trust_for_origin
+from originlens.providers import select_source
 from originlens.schemas import (
     ActionProposal,
     BaselineResult,
@@ -24,7 +25,7 @@ from originlens.schemas import (
 
 def run_scenario(payload: PayloadSeed, provider_mode: str = "hybrid") -> ScenarioTrace:
     run_id = f"run_{payload.id}_{int(time.time() * 1000)}"
-    source: Source = "fallback"
+    source: Source = select_source(provider_mode)
     ledger = ProvenanceLedger()
 
     context = ledger.capture_context(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 from io import StringIO
+from typing import Any
 
 from originlens.schemas import BenchResult
 
@@ -42,4 +43,50 @@ def bench_to_csv(results: list[BenchResult]) -> str:
                 result.source,
             ]
         )
+    return buffer.getvalue()
+
+
+SCENARIO_HEADER = [
+    "run_id",
+    "payload_id",
+    "surface",
+    "payload_family",
+    "source",
+    "baseline_action",
+    "protected_action",
+    "baseline_trigger",
+    "guarded_trigger",
+    "guard_verdict",
+    "origin_chain",
+    "execution",
+]
+
+
+def scenario_to_csv(report: dict[str, Any]) -> str:
+    trace = report.get("trace", report)
+    payload = trace.get("payload", {})
+    baseline = report.get("baseline") or trace.get("baseline", {})
+    guarded = report.get("guarded") or trace.get("guarded", {})
+    action = baseline.get("action") or trace.get("action", {})
+    verdict = guarded.get("verdict", {})
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(SCENARIO_HEADER)
+    writer.writerow(
+        [
+            trace.get("runId") or report.get("runId", ""),
+            payload.get("id", ""),
+            payload.get("surface", ""),
+            payload.get("family", ""),
+            trace.get("source", ""),
+            action.get("actionType", ""),
+            action.get("protectedAction", ""),
+            baseline.get("trigger", ""),
+            guarded.get("trigger", ""),
+            verdict.get("verdict", ""),
+            " > ".join(trace.get("originChain", report.get("originChain", []))),
+            action.get("args", {}).get("execution", ""),
+        ]
+    )
     return buffer.getvalue()

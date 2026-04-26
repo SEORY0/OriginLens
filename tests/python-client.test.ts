@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { proxyToPython, pythonApiUrl } from "@/lib/python-client";
+import { getPayloadsFromPython, proxyToPython, pythonApiUrl } from "@/lib/python-client";
 
 describe("Python API client", () => {
   const originalApiUrl = process.env.ORIGINLENS_API_URL;
@@ -45,5 +45,29 @@ describe("Python API client", () => {
     expect(headers.get("content-type")).toBe("application/json");
     expect(response.headers.get("content-type")).toContain("application/json");
     await expect(response.json()).resolves.toEqual({ ok: true });
+  });
+
+  it("fetches payload explorer data from Python", async () => {
+    process.env.ORIGINLENS_API_URL = "http://python-api.test";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json([
+        {
+          id: "pr_01",
+          surface: "pr_description",
+          family: "approval_spoof",
+          origin: "file_read",
+          content: "payload",
+          expectedProtectedAction: "sandbox_policy_change"
+        }
+      ])
+    );
+
+    const payloads = await getPayloadsFromPython();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://python-api.test/payloads",
+      expect.objectContaining({ method: "GET" })
+    );
+    expect(payloads[0].id).toBe("pr_01");
   });
 });

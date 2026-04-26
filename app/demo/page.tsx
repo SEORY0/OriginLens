@@ -65,6 +65,14 @@ export default function DemoPage() {
     return "Ready";
   }, [stage]);
 
+  const speakerNote = useMemo(() => {
+    if (stage === "baseline") return "The user never approved this.";
+    if (stage === "guard") return "The claim survived, but provenance stayed untrusted.";
+    if (stage === "bench") return "This is measured across a payload set, not a single anecdote.";
+    if (stage === "physical") return "Scene text is observation, not authorization.";
+    return "Run the baseline attack, then replay the same memory with OriginLens Guard.";
+  }, [stage]);
+
   return (
     <PageShell className="grid gap-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
@@ -74,13 +82,13 @@ export default function DemoPage() {
           </p>
           <h1 className="mt-2 text-3xl font-semibold">{activeTitle}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/70">
-            A deterministic fallback trace is always ready. Protected actions are
-            mock-only or simulated-only.
+            {speakerNote}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
           <Badge>API: Vercel Proxy</Badge>
+          <Badge tone="warn">Live: unavailable</Badge>
           <Badge tone="good">Fallback Ready</Badge>
           <Badge>Mode: Hybrid</Badge>
         </div>
@@ -121,6 +129,13 @@ export default function DemoPage() {
 
       {trace ? (
         <section className="grid gap-4 lg:grid-cols-2">
+          <Panel title="Presentation Cue" eyebrow="say this">
+            <p className="text-lg font-semibold leading-7">{speakerNote}</p>
+            <p className="mt-3 text-sm leading-6 text-ink/70">
+              Execution is {String(trace.action.args.execution ?? "mock_only")}; no real
+              command, transmission, or actuator is used.
+            </p>
+          </Panel>
           <Panel title="Lifecycle Timeline" eyebrow="Trace">
             <LifecycleTimeline steps={trace.trace} />
           </Panel>

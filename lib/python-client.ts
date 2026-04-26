@@ -1,4 +1,4 @@
-import type { BenchResponse, CompareResponse } from "@/lib/schemas/core";
+import type { BenchResponse, CompareResponse, PayloadSeed } from "@/lib/schemas/core";
 
 const DEFAULT_API_URL = "http://localhost:8000";
 
@@ -59,13 +59,15 @@ export async function proxyToPython(path: string, request?: Request) {
 }
 
 export async function getPythonHealth() {
-  return pythonJson<{ status: string; engine: string; fallback: string }>("/health", {
+  return pythonJson<{ status: string; engine: string; fallback: string; live: string }>("/health", {
     method: "GET"
   });
 }
 
-export async function getLatestRun() {
-  return pythonJson<CompareResponse>("/runs/latest", { method: "GET" });
+export async function getLatestRun(kind = "scenario") {
+  return pythonJson<CompareResponse>(`/runs/latest?kind=${encodeURIComponent(kind)}`, {
+    method: "GET"
+  });
 }
 
 export async function getRun(runId: string) {
@@ -84,6 +86,10 @@ export async function runBenchFromPython() {
       providerMode: "hybrid"
     })
   });
+}
+
+export async function getPayloadsFromPython() {
+  return pythonJson<PayloadSeed[]>("/payloads", { method: "GET" });
 }
 
 export type PolicyMatrixResponse = Record<

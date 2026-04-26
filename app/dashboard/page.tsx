@@ -9,10 +9,33 @@ import { getLatestRun, getPolicyMatrixFromPython } from "@/lib/python-client";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [response, policies] = await Promise.all([
-    getLatestRun(),
-    getPolicyMatrixFromPython()
-  ]);
+  let response: Awaited<ReturnType<typeof getLatestRun>>;
+  let policies: Awaited<ReturnType<typeof getPolicyMatrixFromPython>>;
+  try {
+    [response, policies] = await Promise.all([
+      getLatestRun("scenario"),
+      getPolicyMatrixFromPython()
+    ]);
+  } catch (error) {
+    return (
+      <PageShell className="grid gap-6">
+        <section>
+          <p className="text-sm font-semibold uppercase tracking-wide text-moss">
+            Full Trace Analysis
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold">Dashboard</h1>
+        </section>
+        <Panel title="Python API unavailable" eyebrow="connection">
+          <p className="text-sm leading-6 text-signal">
+            {error instanceof Error ? error.message : "Unable to reach the OriginLens Python API."}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-ink/70">
+            Start the FastAPI engine, then refresh this page.
+          </p>
+        </Panel>
+      </PageShell>
+    );
+  }
   const trace = response.trace;
 
   return (

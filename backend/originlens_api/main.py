@@ -6,11 +6,12 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from originlens.bench.csv_export import bench_to_csv
+from originlens.bench.csv_export import bench_to_csv, scenario_to_csv
 from originlens.bench.metrics import run_bench
 from originlens.guard.action_verifier import verify_action
 from originlens.guard.policies import POLICY_MATRIX
-from originlens.payloads import get_payload
+from originlens.payloads import ALL_PAYLOADS, get_payload
+from originlens.providers import provider_status
 from originlens.redteam.pipeline import (
     compare_from_trace,
     run_scenario,
@@ -27,6 +28,19 @@ from originlens.schemas import (
 from originlens.store import RunStore
 
 load_dotenv()
+
+
+def token_required() -> bool:
+    return os.getenv("ORIGINLENS_ENV") == "production" or os.getenv(
+        "ORIGINLENS_REQUIRE_TOKEN"
+    ) == "true"
+
+
+if token_required() and not os.getenv("ORIGINLENS_API_TOKEN"):
+    raise RuntimeError(
+        "ORIGINLENS_API_TOKEN is required when ORIGINLENS_ENV=production or "
+        "ORIGINLENS_REQUIRE_TOKEN=true."
+    )
 
 app = FastAPI(
     title="OriginLens Python Engine",
@@ -46,8 +60,10 @@ store = RunStore()
 
 def require_token(authorization: str | None = Header(default=None)) -> None:
     expected = os.getenv("ORIGINLENS_API_TOKEN")
-    if not expected:
+    if not expected and not token_required():
         return
+    if not expected:
+        raise HTTPException(status_code=500, detail="OriginLens API token is not configured.")
     if authorization != f"Bearer {expected}":
         raise HTTPException(status_code=401, detail="Invalid OriginLens API token.")
 
@@ -58,6 +74,7 @@ def health() -> dict[str, str]:
         "status": "ok",
         "engine": "python",
         "fallback": "ready",
+        "live": provider_status()["live"],
     }
 
 
@@ -102,6 +119,11 @@ def policy_matrix():
     }
 
 
+@app.get("/payloads", dependencies=[Depends(require_token)])
+def payloads():
+    return [payload.model_dump(mode="json") for payload in ALL_PAYLOADS]
+
+
 @app.post("/multimodal/extract", dependencies=[Depends(require_token)])
 def multimodal_extract(request: MultimodalRequest):
     payload_id = "physical_01" if request.scenario == "physical_restricted_zone" else "invoice_01"
@@ -120,8 +142,9 @@ def multimodal_extract(request: MultimodalRequest):
 
 
 @app.get("/runs/latest", dependencies=[Depends(require_token)])
-def runs_latest():
-    latest = store.latest("scenario")
+def runs_latest(kind: str = "scenario"):
+    requested_kind = None if kind == "any" else kind
+    latest = store.latest(requested_kind)
     if latest:
         return latest
     trace = run_scenario(get_payload("pr_01"), "demo")
@@ -140,8 +163,8 @@ def runs_get(run_id: str):
 
 @app.get("/report/export", dependencies=[Depends(require_token)])
 def report_export(runId: str = "latest", format: str = "csv"):
-    stored = store.latest() if runId == "latest" else store.get(runId)
-    if not stored or "results" not in stored:
+    stored = store.latest("bench") if runId == "latest" else store.get(runId)
+    if not stored:
         bench = run_bench(BenchRequest(payloadCount=50, includeBenign=True))
         stored = bench.model_dump(mode="json")
         store.save(bench.summary.runId, "bench", bench)
@@ -149,7 +172,11 @@ def report_export(runId: str = "latest", format: str = "csv"):
     if format == "json":
         return stored
 
-    csv_body = bench_to_csv([BenchResult.model_validate(item) for item in stored["results"]])
+    csv_body = (
+        bench_to_csv([BenchResult.model_validate(item) for item in stored["results"]])
+        if "results" in stored
+        else scenario_to_csv(stored)
+    )
     return Response(
         content=csv_body,
         media_type="text/csv",

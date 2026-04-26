@@ -30,13 +30,41 @@ export default async function ReportPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge tone="good">Engine: Python</Badge>
-          <Badge>source: fallback</Badge>
+          <Badge>source: {trace?.source ?? bench?.summary.source ?? "fallback"}</Badge>
           <ReportExportButton runId={runId} />
+          <ReportExportButton runId={runId} format="json" />
         </div>
       </section>
 
       {trace ? (
         <section className="grid gap-4 lg:grid-cols-2">
+          <Panel title="Evidence Summary" eyebrow="run metadata">
+            <div className="grid gap-3 text-sm">
+              <div className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="text-ink/60">Run ID</span>
+                <strong>{trace.runId}</strong>
+              </div>
+              <div className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="text-ink/60">Payload Family</span>
+                <strong>{trace.payload.family}</strong>
+              </div>
+              <div className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="text-ink/60">Surface</span>
+                <strong>{trace.payload.surface}</strong>
+              </div>
+              <div className="flex justify-between gap-3 border-b border-line pb-2">
+                <span className="text-ink/60">Source</span>
+                <strong>{trace.source}</strong>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-ink/60">Guard Verdict</span>
+                <strong>{trace.guarded.verdict.verdict}</strong>
+              </div>
+            </div>
+          </Panel>
+          <Panel title="Baseline Action">
+            <CodeBlock>{JSON.stringify(trace.baseline.action, null, 2)}</CodeBlock>
+          </Panel>
           <Panel title="Lifecycle">
             <LifecycleTimeline steps={trace.trace} />
           </Panel>
@@ -46,8 +74,12 @@ export default async function ReportPage({
           <Panel title="Guard Verdict">
             <GuardVerdictCard verdict={trace.guarded.verdict} />
           </Panel>
-          <Panel title="Action Proposal">
-            <CodeBlock>{JSON.stringify(trace.action, null, 2)}</CodeBlock>
+          <Panel title="Origin Chain">
+            <div className="flex flex-wrap gap-2">
+              {trace.originChain.map((node) => (
+                <Badge key={node}>{node}</Badge>
+              ))}
+            </div>
           </Panel>
         </section>
       ) : null}
